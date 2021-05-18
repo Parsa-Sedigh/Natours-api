@@ -1,6 +1,118 @@
+/* SECTION 1. Welcome, Welcome, Welcome!:
+1-1. Course Structure and Projects:
+
+2-nothing
+
+3-3. Let's Install Node.js:
+*/
+
+/* SECTION 2. Introduction to Node.js and NPM:
+4-1. Section Intro:
+
+5-2. What Is Node.js and Why Use It:
+
+6-3. Running Javascript Outside the Browser;
+
+7-4. Using Modules 1 Core Modules
+
+8-5. Reading and Writing Files:
+
+9-6. Blocking and Non-Blocking Asynchronous Nature of Node.js:
+
+10-7. Reading and Writing Files Asynchronously:
+
+11-8. Creating a Simple Web Server:
+
+12-9. Routing:
+
+13-10. Building a (Very) Simple API:
+
+14-11. HTML Templating Building the Templates:
+
+15-12. HTML Templating Filling the Templates:
+
+16-13. Parsing Variables from URLs:
+
+17-14. Using Modules 2 Our Own Modules:
+
+18-15. Introduction to NPM and the package.json File:
+
+19-16. Types of Packages and Installs:
+
+20-17. Using Modules 3 3rd Party Modules:
+
+21-18. Package Versioning and Updating:
+
+22-19. Setting up Prettier in VS Code:
+
+23-20. Recap and What's Next:
+*/
+
+/* SECTION 3. Introduction to Back-End Web Development:
+24-1. Section Intro:
+
+25-2. An Overview of How the Web Works:
+
+26-3. HTTP in Action:
+
+27-4. Front-End vs. Back-End Web Development:
+
+28-5. Static vs Dynamic vs API:
+*/
+
+/* SECTION 4. How Node.js Works A Look Behind the Scenes:
+29-1. Section Intro:
+
+30-2. Node, V8, Libuv and C++:
+
+31-3. Processes, Threads and the Thread Pool:
+
+32-4. The Node.js Event Loop:
+
+33-5. The Event Loop in Practice:
+
+34-6. Events and Event-Driven Architecture:
+
+35-7. Events in Practice:
+
+36-8. Introduction to Streams:
+
+37-9. Streams in Practice:
+
+38-10. How Requiring Modules Really Works:
+
+39-11. Requiring Modules in Practice:*/
+
+/* SECTION 5. [Optional] Asynchronous JavaScript Promises and AsyncAwait:
+40-1. Section Intro:
+
+41-2. The Problem with Callbacks Callback Hell:
+
+42-3. From Callback Hell to Promises:
+
+43-4. Building Promises:
+
+44-5. Consuming Promises with AsyncAwait:
+
+45-6. Returning Values from Async Functions:
+
+46-7. Waiting for Multiple Promises Simultaneously:
+*/
+
+/* SECTION 6. Express Let's Start Building the Natours API!:
+47-1. Section Intro:
+
+48-2. What is Express:
+
+49-3. Installing Postman:
+
+50-4. Setting up Express and Basic Routing:
+*/
+
 /* Our goal is that the exact same tours or ... that you see on the graphical interface (rendered website), must be get from the
-API too. */
-/* An API is a service that we can request some data from it. Or in other words: API is a piece of software that can be used by
+API too.
+
+An API is a service that we can request some data from it. Or in other words: API is a piece of software that can be used by
 another piece of software in order to allow apps to talk to each other.
 The application in API can actually mean many different things as long as the piece of software is relatively stand alone.
 For example the node file system or HTTP modules. We can say that they are small pieces of software and we can use them (interact
