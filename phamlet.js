@@ -107,7 +107,58 @@
 49-3. Installing Postman:
 
 50-4. Setting up Express and Basic Routing:
-*/
+Let's create a simple server and do some basic routing.
+
+Linting is just to fix some errors.
+
+The first thing that we usually do with in a new project is to create the package.json file and the command for that is
+npm init and remember the na,e of project(actually the package name) can not have any capital letters. The entry point of our project
+is not index.js but app.js .
+To install express version x, in terminal we can say: npm i express@x and that will install the latest version INSIDE of x. So if you
+write: npm i express@4 , it will then install the latest version inside of 4. So with the latest minor and patch versions. The version
+for tutor is 4.16.4 .
+
+Now create app.js . It's kind of a convention to have all the express configuration in app.js .
+After importing express, create a variable called app in app.js which is kind of a standard and assign it the result of calling express() .
+express variable(the variable resulting of requiring express package) is a FUNCTION which upon calling, will add a bunch of method to
+our app variable there and the first one that we're gonna use now, is listen() function in order to start up a server. So that is a
+bit similar to what we did before with the http package in the previous sections. So express is 100% nodejs under the hood and some
+of the things work in a very similar way in express. In app.listen() , we pass in the port and let's actually create a variable for that
+before that line of app.listen() in app.js for now and we're gonna change it a bit later and then pass in a callback function which
+will be called, as soon as the server STARTS listening. So now our server is now listening.
+
+Now what we need to do next is to define route.
+Routing means basically to determine how an application responds to a certain client request, so to a certain url and actually it's not
+just a url, but also the http method which is used for that request. For that we use app(variable which is the result of calling express())
+and then calling the http method on it. So again, the route is basically the url, which in this case, is just that root url(for example) and
+also the http method.
+
+Now what do we actually want to happen when someone hits that url with that specified http method that we wrote for that route?
+Whatever we wanna do, we need to specify it in a callback function as the second arg of app.<http method>() .
+
+The req and res objects have a lot more data and methods on them in express than in normal nodejs. So you see that express apps and
+so also node apps for that matter, are all about requests and responses, simply because, that is how the web works.
+For sending the status code of response, before we send the data of response with res.send() , we just add status() before that.
+
+For using nodemon, you need to use the file name with IT'S EXTENSION.
+
+The ip for localhost is: 127.0.0.1 and then you can specify your port(first you need to start your local server though!).
+
+The send() method, simply just sends a string back to the client, so if you wanna send json to the client, you need to use json()
+instead of send() and in () of .json() , you just pass in an object.
+
+The code of status() , will be shown in little bar up the response body section in postman.
+
+When you get some HTML(!!!) as the response of request which in that html, it says: Cannot POST<the http method that you sent the request
+with it> and the status code would be 404, that's what express automatically sends back and that's because we don't have ANY ROUTE defined
+for that requested url and for that http method.
+
+The default status code of a successful request is 200 and it's for when we don't specify any status codes for response in our code.
+
+Important: By using the .json() method , that will AUTOMATICALLY set our Content-Type to application/json . Express also automatically
+ sends a bunch of other headers as response headers. Like: X-Powered-By: Express , or the Date: ... , or the Connection: keep-alive.
+But in nodefarm app, we did this manually. So back then, we also sent back some json, but we then had to MANUALLY define that the content
+was json, so that the browser knew what it was EXPECTING. But express takes that work away from us when we use .json() method.  */
 
 /* Our goal is that the exact same tours or ... that you see on the graphical interface (rendered website), must be get from the
 API too.
@@ -238,7 +289,7 @@ must be a name and not a verb.
 * response to finish the cycle.
 * Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack.
 *     */
-/* To install express version x, in terminal we can say: npm i express@x */
+
 /* You can branch off and create a new version of your API, while old users can still using the old one.But if we didn't use
 different versions and changed the current api, the api would break for the users that were using it. So it's good to have
 versioning. */
