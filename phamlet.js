@@ -158,137 +158,277 @@ The default status code of a successful request is 200 and it's for when we don'
 Important: By using the .json() method , that will AUTOMATICALLY set our Content-Type to application/json . Express also automatically
  sends a bunch of other headers as response headers. Like: X-Powered-By: Express , or the Date: ... , or the Connection: keep-alive.
 But in nodefarm app, we did this manually. So back then, we also sent back some json, but we then had to MANUALLY define that the content
-was json, so that the browser knew what it was EXPECTING. But express takes that work away from us when we use .json() method.  */
+was json, so that the browser knew what it was EXPECTING. But express takes that work away from us when we use .json() method.
 
-/* Our goal is that the exact same tours or ... that you see on the graphical interface (rendered website), must be get from the
+So we create a route in order to respond to client request. So let's build api with rest architecture.
+
+51-5. APIs and RESTful API Design:
+Let's talk about APIs on a higher level and look at rest architecture which is the most used api architecture today.
+
+What is an api anyway?
+API stands for application programming interface and on a very high level, it's basically a piece of software that can be used by
+another piece of software, in order to allow applications to talk to each other.
+We have talked about APIs before, more specifically, WEB apis, where we simply built an app that sends data to a client, whenever a request
+comes in. So imagine we have our app running on a server and we have a client and so in fact, we effectively have two pieces of software,
+talking to each other right? and this is the kind of api we will build in this course and it's the most widely used TYPE of api out
+there. But in fact, apis aren't only used to send data and aren't always related to web development or JS. So the application in api, can
+actually mean many different things as long as the piece of software is relatively stand alone.
+
+Our goal is that the exact same tours or ... that you see on the graphical interface (rendered website), must be get from the
 API too.
 
 An API is a service that we can request some data from it. Or in other words: API is a piece of software that can be used by
 another piece of software in order to allow apps to talk to each other.
 The application in API can actually mean many different things as long as the piece of software is relatively stand alone.
-For example the node file system or HTTP modules. We can say that they are small pieces of software and we can use them (interact
-with them) by using their API.So for example when we use readFile() function from the fs module, we're actually using the fs API!
-So node APIs simply refers to the core node modules that we can interact with them. Or when we do DOM manipulation in the browser,
-we are not really using the JS language itself, but rather, the DOM API that the browser exposes to us (or gives us access to it.)
-Or another example: Let's say we created a class in any programming language, and then add some public methods or public properties
-to it. These methods will be the API of each object that is created by that class, because we're giving other pieces of software,
-the possibility of interacting with OUR initial piece of software (the object is our piece of software in this case.).So
-API has a broader meaning than just web apis.
-*/
-/*
-REST (representational states transfer) is basically a way of building web APIs in a logical way,making them easy to consume.
-For building restful APIs in web, we must :
-1)Separate API into logical resources. These resources should be exposed,which means to be available using structured and
-resource-based URLs. What is a resource in APIs? It is an object or representation of something which has some data associated to it.
-For example: tours or users or reviews. So basically any information that can be NAMED can be a resource. But REMEMBER: A resource
-must be a name and not a verb.
+For example the node file system or HTTP modules. We can say that they are small pieces of software and we can use them (we can interact
+with them) by using their API. So for example when we use readFile() function from the fs module, we're actually using the fs API!
+and that's why you will sometimes hear the term "node APIs" and that usually simply refers to the core node modules that we can
+interact with them. Or when we do DOM manipulation in the browser, we are not really using the JS language itself, but rather,
+the DOM API that the browser exposes to us (or gives us access to it.)
+Or another example: Let's say we created a class in any programming language like java, and then add some public methods or public properties
+to it. These methods will then be the API of each object, created from that class, because we're giving other pieces of software,
+the possibility of interacting with OUR initial piece of software (the objects are our piece of software in this case). So
+API has a broader meaning than just (building) web apis. Anyway, a WEB api is what's most crucial for us in the context of node and so
+let's now look at the REST architecture to build APIs.
 
- 2) Expose structured and resource-based URLs. Means we need to expose (make available) the data by using some structured URLs that
- the client can send a request to those structured URLs. For example sth like : https://natours.com/addNewTour . In this example
- addNewTour is called an API endpoint. An API endpoint will send different data back to the client or also performs different actions.
- Another cases of API endpoints: /getTour, /updateTour. BUT : There is sth very wrong (bad) with these endpoints here.
- Because they really don't follow the third rule which says that we should only use the HTTP methods in order to perform actions
- on data.
- Important: So endpoints should only contain our resources and not the actions that can be performed on our resources. Because
-  they would quickly become a nightmare to maintain.
- So how we should use these HTTP methods in practice? Or how these endpoint should actually look like?
- For example: /getTour endpoint is to get data about a tour(our resource). So we should name the endpoint /tours and send the data
- whenever a get request (get HTTP method from client) is made to this endpoint. So with this change, now we only have resources names in the
- endpoint or in the URL and no verbs, because the verb is now in the http method. Right?
- Good practice: Always use the resource name in plural.
- Now the convention is that when calling /tours endpoint, we get back all of our tours that are in a database. But if we only want
- the tour with one id (unique identifier- another example of the unique identifier is name of the tour), we add that id after
- another slash OR in a search query. Like /tours/7
 
-* Learn: GET and POST and... are HTTP methods.
-*
-* If the client want to create a new resource in our database for example create a new tour-> we use POST and the url would be like:
-* /tours but for POST HTTP method (POST requests can send data to the DB. In this case no id will be sent because the server should
-* figure out the id for new resource.)
-* Important: The endpoint name is exact for GET and POST for tours resource. The only difference is the HTTP method that is used for the
-*  request.So if the /tours endpoint is accessed with GET, we send data to the client. But if the same endpoint is accessed with POST,
-*  we expect data to come in with a request.So with this approach we use the difference between HTTP methods instead of using verbs in
-*  endpoints.
-*
-* Learn: For updating a resource we use PUT or PATCH. The difference is that with PUT, the client is supposed to send the ENTIRE updated
-*  object. But with PATCH, client supposed to send only the part of the object that has been changed. So with put http method, we expect
-*  that our application receives the new updated object and with patch, we only expect the properties that should updated on the object.
-*  So patch method is also easier for user to simply send the data that is changing, instead of having to send the entire new object.
-*  So we are going to make our app to work with patch not put.
-*  But both of them have the ability to
-*  send data to the server, a bit like POST, actually with a different intent. Because POST is to create a new resource, while PUT or PATCH
-*  are used to update an existing resource and also we have delete HTTP method. These are CRUD.
-*  But there might be actions that are not CRUD and in that case we just need to be creative with our endpoints. For example, a login or
-*  a search operation.These are not really related to a particular resource and they're not CRUD operations either. But still we can
-*  create endpoints for them. Like /login or /search.
-*
-*  Learn: When we involve 2 resources at the same time together, it's not a problem with REST! So we can translate /getToursByUser to
-*   /users/3/tours . So this particular endpoint can send data about all of the tours that user number 3 has booked.
-*   Also for deleting a tour by a particular user we can set an endpoint like: /users/3/tours/9 on delete HTTP method.
-*   So these examples were combinations of resources.
-*
-* 3) Use HTTP methods(verbs). Which means to perform different actions on data like reading, creating and ... , the API should use the
-* right HTTP methods and not the URL.
-*
-* 4) Send data as JSON(usually). Means the data that we send back to the client or the data that we received from client, should usually
-* use JSON data format.
-*
-* Remember: We could send our response to the client in JSON formatting, but usually we do some simple response formatting before
-* sending.The one of standards is Jsend.In Jsend we simply create a new object, then add a status message to it in order to inform the
-* client whether the request was success, fail or error and then we put our original data into a new object called data and wrapping
-* the data into an additional object, like we did here is called enveloping and it's a common practice to mitigate some security issues
-* and other problems.
-* Other response-formatting standards: Jsend:API and Odata JSON protocol
-*
-* 5) Be stateless.
-* In stateless restful API, all state is handled on the client and not on the server and state simply refers to a piece of data
-* in the application that might change over time.For example, whether a certain user is logged in or on a page with a list of
-* several pages, what the current page is?
-* Now the fact that the state should be handled on the client means that each request must contain all the information that is
-* necessary to process a certain request on the server.
-*  So the server should never ever have to remember the previous request
-* in order to process the current request. For example in a list with several pages, we currently are in page 5 and want to move
-* forward to page 6. So:
-* currentPage = 5;
-*
-* Bad practice for this example: We could have a simple endpoint called /tours/nextPage and submit a GET req to it.But then the server
-* would have to figure out what is the current page and based on that send the next page to the client. In other word, the server would
-* have to remember the previous request. So it would handle the request server side and this is exactly what we want to avoid in REST api.
-* Plan: GET /tours/nextPage -> web server: nextPage = currentPage +1;
-*                              send(nextPage); //The state is currentPage variable and it's on server side.So this is a bad practice!!!
-*
-* Bad practice for this example: Instead in this example we should create a /tours/page/<number of page> endpoint and pass the number
-* 6 to it.This way, we would handle state on the client side, because on the client, we would already know that we are currently on
-* page 5 and so all we have to do is to just add 1 and then request page number 6.So the server doesn't have to remember anything in
-* this solution and all it has to do is to send back data for page number 6 as we requested.
-* Plan: GET tours/page/6 -> web server : send(page 6)
-*
-*
-*  */
+Web APIs:                                                               But, "application" can mean other things:
+                                 ------ browsers                         - nodejs's fs or http APIs("node APIs")
+                                |                                        - browser's DOM JS API
+                                | ----- native mobile app(ios)           - with object-oriented programming, when exposing methods to
+database ---> JSON data ---> API                                           the public, we're creating an api
+                                |                                        - ...
+                                | ----- native mobile app(android)
+                                |
+                                | ----- native app(macOS)
+                                |
+                                | ---- native app(windows)
+
+The REST architecture:
+REST, which stands for representational state transfer, is basically a way of building web APIs in a logical way, making them easy to consume.
+Because remember, we build an API for ourselves for ourselves or for others to CONSUME and so we want to make the process of actually
+USING(CONSUMING) the API, as smooth as possible for the user. Now to build RESTful APIs, which means APIs following the REST
+architecture, we just need to follow a couple of principles: (So for building restful APIs in web, we must follow these things): */
+
+/* We need to separate our API into logical RESOURCES. These resources should then be exposed, which means to be made available,
+using structured, resource-based URLs. To perform different actions on data like reading or creating or deleting data, the api should
+use the right http methods and NOT the url. Now the data that we actually send back to the client or that we receive FROM the client,
+should usually use the JSON data format, where some formatting standard applied to it. Finally, another crucial principle of REST apis,
+is that they must be stateless.
+
+1) Separate API into logical RESOURCES
+2) Expose structured, RESOURCE-BASED URLs
+3) use http methods(verbs)
+4) send data as json(usually)
+5) be stateless
+
+1) The key abstraction of information in REST is a resource and therefore, all the data that we wanna share in the API should be divided into
+logical resources. Now what actually is a resource?
+In the context of REST, it is an object or a representation of something which has some data associated to it.
+For example: tours or users or reviews. So basically any information that can be NAMED, can be a resource. But REMEMBER: A resource
+has to be a name and not a verb.
+
+2) Now we need to expose, which means to make available the data, using some structured urls that the client can send a request to.
+Expose structured and resource-based URLs. Means we need to expose (make available) the data by using some structured URLs that
+the client can send a request to those structured URLs. For example sth like : https://natours.com/addNewTour . So this entire address
+is called the URL and that /addNewTour is called an API endpoint. So our Api will have many different endpoints like /getTour and ... and
+each of which, will send different data back to the client or also perform different actions.
+Another cases of API endpoints: /getTour, /updateTour. BUT : There is sth very wrong (bad) with these endpoints here.
+Because they really don't follow the third rule which says that we should only use the HTTP methods in order to perform actions
+on data.
+Now there's actually sth very wrong with the endpoints I named and also the endpoints in below diagram. Because they really don't follow
+the third rule which says(look at the next number):
+
+3)that we should only use http methods in order to perform actions on data.
+Important: So endpoints should only contain our resources and not the actions that can be performed on our resources. Because
+ that would quickly become a nightmare to maintain.
+So how we should use these HTTP methods in practice?
+Well, let's see how these endpoint should actually look like?
+For example: /getTour endpoint is to get data about a tour(our resource). So we should name the endpoint /tours and send the data
+whenever a GET request (get HTTP method from client) is made to this endpoint. So in other words, when a client uses a GET HTTP method to
+access the endpoint and just like this, we only have resources in the endpoint or in the url, and no verbs. Because the verb is now
+in the http method(so verb is kinda implicit in the http method itself).
+So with this change, now we only have resources names in the
+endpoint or in the URL and no verbs, because the verb is now in the http method. Right?
+Important: Good practice: Always use the resource name in plural.
+
+Now the convention is that when calling /tours endpoint, we get back all of our tours that are in a database. But if we only want
+the tour with one id (unique identifier - another example of the unique identifier is name of the tour), we add that id after
+another slash OR in a search query. Or it could also be the name of a tour instead of the id, or some other unique identifier. The
+detail doesn't really matte r at this point. Like /tours/7
+
+Learn: GET and POST and... are HTTP methods.
+
+GET(a http method or verb, which we can respond to it) is used to perform the read operation on data.
+
+If the client wants to CREATE a new resource in our database for example create a new tour-> the POST method should be used and
+the url would be like: /tours , so for POST HTTP method, we know that POST requests can send data to the DB. In this case no id will be
+sent because the server should figure out the id for new resource. But for GET, the consumer should include the id of requested tour in url
+or query params.
+
+So we learned that a POST request can be used to send data to the server and so it makes sense to use POST in order to create new resources.
+Now in this case, usually no id will be sent, because the server should AUTOMATICALLY figure out the id for the new resource. What's crucial
+here, is how the endpoint name is the exact same name as before.
+
+Important: So the endpoint name is exact for GET and POST for tours resource. The only difference is the HTTP method that is used for the
+ request. So if the /tours endpoint is accessed with GET, we send data TO the client. But if the same endpoint is accessed with POST,
+ we expect data to come IN with a request. So that we can then, create a new resource on the server side.
+So that is the beauty of only using http methods, rather than messing with verbs in the endpoint names. But if we don't do this, it would
+become unmanagable. So with this approach we use the difference between HTTP methods instead of using verbs in endpoints.
+
+Next, there should also be the ability to update resources.
+Learn: For updating a resource the user should make either PUT or PATCH request to the endpoint. The difference is that with
+ PUT, the client is supposed to send the ENTIRE UPDATED object. But with PATCH, client supposed to send ONLY the PART of the object
+ that has been changed. So with put http method, we expect that our application receives the new updated object and with patch,
+ we only expect the properties that should updated on the object. So patch method is also easier for user to simply send the
+ data that is changing, instead of having to send the entire new object. So we are going to make our app to work with PATCH not PUT.
+ But both of them have the ability to send data to the server, a bit like POST actually, but with a different intent.
+Because POST is to create a new resource, while PUT or PATCH are used to update an existing resource and also we have delete
+HTTP method, again, the id or some other unique identifier of the resource to be deleted, should be part of the url in DELETE.
+These are CRUD.
+
+Usually, in order to actually be able to perform this kind of request(like DELETE), the client must be authenticated. So basically, log in
+to your app.
+
+So those are the five http methods that we can and should, respond to, when building our RESTful APIs. So that the client can perform
+therefore basic CRUD operations.
+You see that those http methods, map quite nicely to the basic CRUD operations.
+
+But there might be actions that are not CRUD and in that case we just need to be creative with our endpoints. For example,
+a login or a search operation.These are not really related to a particular resource and they're not CRUD operations either.
+But still we can create endpoints for them. Like /login or /search.
+
+Remember that we had two other crazy endpoint names which kind of involved two resources at the same time and that's also no problem at all
+with REST(when we involve 2 resources at the same time together). Those endpoints were:
+Important: /getToursByUser and /deleteToursByUser. /getToursByUser can be simply be translated to /users/<number of user>/tours.
+ So this particular endpoint, could send data about all the tours that user number three has booked. Or in the case of deleting,
+ there could be a DELETE request to the same or a very similar endpoint, requesting tour number 9 to be deleted, from user number three.
+So we can combine resources like this.
+EX) /getToursByUser ---> GET /users/3/tours                 | (possibilites are endless)
+    /deleteToursByUser ---> DELETE /users/3/tours/9         |
+
+
+3) Use HTTP methods(verbs). Which means to perform different actions on data like reading, creating and ... , the API should use the
+right HTTP methods and not the URL.
+
+4) Send data as JSON(usually). Means the data that we send back to the client or the data that we received from client, should usually
+use JSON data format.
+
+About the data the the client receives, or that the server receives from the client, usually we use the JSON data format.
+So let's briefly look what JSON actually is and how to format our API responses. JSON is a very lightweight data interchange format which is
+heavily used by web APIs, coded in any programming language. So it's not just related to JS and it's so widely used today, because it's really
+easy for both humans and computers to understand and write JSON.
+JSON looks a bit like a regular JS object, with all those key-value pairs. But there are some differences and the most crucial one is that all
+the keys have to be strings. It's also very typical for the values to be strings as well, but they can be other things like numbers, true or
+false values, other object(s), or even arrays of other values.
+
+We could send our JSON response to the client in JSON formatting, but usually we do some simple response formatting before
+sending. There are a couple of standards for this and we're gonna use JSend.
+In JSend we simply create a new object, then add a status message to it in order to inform the client whether the request was a success,
+fail or error and then we put our original data into a new object called data and we can develop this even a further, but this is the
+simplest way of formatting with JSend and by the way, wrapping the data into an additional object, like we did here is called enveloping
+and it's a common practice to mitigate some security issues and other problems.
+Other response-formatting standards: JSend:API and OData JSON protocol and ...
+
+EX)
+{                                                             {
+  "id": 5,                                                      "status": "success",
+  "tourName": "...",        response formatting                 "data": {
+  guides: [                 --------------->                      "id": 5
+    {...},                                                        ,
+    {...}                                                         ...
+  ]                                                           }
+}
+
+5) Be stateless.
+In stateless restful API, all state is handled on the client and not on the server and state simply refers to a piece of data
+in the application that might change over time.For example, whether a certain user is logged in or on a page with a list of
+several pages, what the current page is?
+Now the fact that the state should be handled on the client means that each request must contain all the information that is
+necessary to process a certain request on the server.
+So the server should never ever have to remember the previous request in order to process the current request.
+For example in a list with several pages, we currently are in page 5 and want to move forward to page 6. So, we could have a
+single endpoint called /tours/nextPage and submit a request to it. But the server would then have to figure out what the current
+page is and based on that, send the next page to the client.
+
+Bad practice for this example:  In other words, the server would have to remember the previous request. So it would have to handle the
+state, server side and that is exactly what we want to avoid in REST apis. So this is a bad practice.
+Plan: GET /tours/nextPage -> web server: nextPage = currentPage +1;
+                              send(nextPage); //The state is currentPage variable and it's on server side.So this is a bad practice!!!
+
+Good practice for this example: Instead in this example we should create a /tours/page/<number of page> endpoint and pass the number
+6 to it, in order to request the page number 6. This way, we would handle state on the client side, because on the client,
+we would already know that we are currently on page 5 and so all we have to do is to just add 1 and then request page number 6.
+So the server doesn't have to remember anything in * this solution and all it has to do is to send back data for page number 6 as we requested.
+and by the way, statelessness and statefulness, are very crucial concepts in computer scinece and application design in general.
+
+Stateless RESTful API: All state is handled on the CLIENT. This means that each request must contain ALL the information necessary to
+process a certain request. The server should not have to remember previous requests.
+
+Examples of state: loggedIn - currentPage
+
+currentPage = 5
+
+BAD:
+                                                  (state on the server)
+                                                          ^
+                                                          |
+GET /tours/nextPage ---> web server:  nextPage =       currentPAge              + 1
+
+GOOD:
+          state coming from client
+                ^
+                |
+GET /tours/page/6  ----> web server:  send(6)
+
+
+Diagram:
+Resource: Object or representation of sth, which has data associated to it. Any information that can be NAMED, can be a resource.
+EX) tours - users - reviews
+
+            URL(all of the string)
+https://www.natours.com/addNewTour
+                        ENDPOINT(the slash is also included)     |
+                        Other examples:                          |  BAD
+                        /getTour                                 |
+                        /updateTour                              |
+                        /deleteTour                              |
+                        /getTourByUser                           |
+                        /deleteTourByUser                        |
+
+Endpoints should contain ONLY RESOURCE(nouns) and use http methods for actions!
+
+7 is Tour id.
+
+/addNewTour ---> POST /tours       Create
+/getTour    ---> GET /tours/7      Read
+/updateTour ---> PUT  /tours/7
+            |                      Update
+            ----> PATCH /tours/7
+/deleteTour ----> DELETE /tours/7  Delete*/
 /* request-response cycle: To start this cycle, our express app receives a request when someone hits our server and then it will
-* create a req object and a res object. That data will then be used and processed in order to generate and send back a meaningful
-* response. Now, in order to process that data in express, we use something called middleware. Middleware can manipulate the
-* req or res objects or execute any other code that we like.So middleware doesn't always have to be just about the req or res object.
-* But usually it is about request.For example express.json() is to access to the request body on the req object.Now it's called middleware
-* because it's a function that is executed between or in the middle of receiving the request and sending the response.So we can say everything
-* is basically a middleware.Even our route defenitions. Or express.json() which is also called body parser is a middleware. Or some
-* logging functionality or setting some specific http headers.
-* All the middleware together that we use in our app, is called the middleware stack.
-* Important: The order of middleware in stack, is actually defined by the order they are actually defined in the code.So a middleware
-*  that appears first in the code, is executed before another middleware that appears later.So the order of code matters a lot in express.
-* Our request and response object that were created in the beginning, go through each middleware where they are processed or where
-* just some other code is executed.Then at the end of each middleware function, the next() function is called, which is a function
-* that we have access to in each middleware function (Just like req and res objects that we have access in each middleware).
-* So when we call next(), the next middleware in the stack will be executed with same req and res objects and this happens until
-* we reach the last middleware.
-* You can think the whole process as kind of pipeline where our data goes through.
-* The last middleware function is usually a route handler.So in this handler we actually not call the next() function to move to NEXT
-* MIDDLEWARE(So we don't call next() to go to next MIDDLEWARE, but maybe we call next() to go to another route handler function! All right?)
-* Instead, we finally send the response data back to the client.So with this, we finish the request-response cycle.
-* So this cycle starts with the incoming request then executes all the middlewares in middleware stack step by step and finally send the
-* response to finish the cycle.
-* Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack.
-*     */
+create a req object and a res object. That data will then be used and processed in order to generate and send back a meaningful
+response. Now, in order to process that data in express, we use something called middleware. Middleware can manipulate the
+req or res objects or execute any other code that we like.So middleware doesn't always have to be just about the req or res object.
+But usually it is about request.For example express.json() is to access to the request body on the req object.Now it's called middleware
+because it's a function that is executed between or in the middle of receiving the request and sending the response.So we can say everything
+is basically a middleware.Even our route defenitions. Or express.json() which is also called body parser is a middleware. Or some
+logging functionality or setting some specific http headers.
+All the middleware together that we use in our app, is called the middleware stack.
+Important: The order of middleware in stack, is actually defined by the order they are actually defined in the code.So a middleware
+ that appears first in the code, is executed before another middleware that appears later.So the order of code matters a lot in express.
+Our request and response object that were created in the beginning, go through each middleware where they are processed or where
+just some other code is executed.Then at the end of each middleware function, the next() function is called, which is a function
+that we have access to in each middleware function (Just like req and res objects that we have access in each middleware).
+So when we call next(), the next middleware in the stack will be executed with same req and res objects and this happens until
+we reach the last middleware.
+You can think the whole process as kind of pipeline where our data goes through.
+The last middleware function is usually a route handler.So in this handler we actually not call the next() function to move to NEXT
+MIDDLEWARE(So we don't call next() to go to next MIDDLEWARE, but maybe we call next() to go to another route handler function! All right?)
+Instead, we finally send the response data back to the client.So with this, we finish the request-response cycle.
+So this cycle starts with the incoming request then executes all the middlewares in middleware stack step by step and finally send the
+response to finish the cycle.
+Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack. */
 
 /* You can branch off and create a new version of your API, while old users can still using the old one.But if we didn't use
 different versions and changed the current api, the api would break for the users that were using it. So it's good to have
