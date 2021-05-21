@@ -127,6 +127,9 @@ of the things work in a very similar way in express. In app.listen() , we pass i
 before that line of app.listen() in app.js for now and we're gonna change it a bit later and then pass in a callback function which
 will be called, as soon as the server STARTS listening. So now our server is now listening.
 
+We have all of the express configuration in this file and this file is our entry point of our program (the default is index.js
+(when you are running command npm init), but in our project we change that to app.js file)
+
 Now what we need to do next is to define route.
 Routing means basically to determine how an application responds to a certain client request, so to a certain url and actually it's not
 just a url, but also the http method which is used for that request. For that we use app(variable which is the result of calling express())
@@ -406,6 +409,321 @@ Endpoints should contain ONLY RESOURCE(nouns) and use http methods for actions!
             |                      Update
             ----> PATCH /tours/7
 /deleteTour ----> DELETE /tours/7  Delete*/
+/* 52-6. Starting Our API Handling GET Requests:
+We start by building the API and then the dynamically rendered website. In order to look at express and mongo and mongoose, the tutor
+find it easier to just work with data and not to worry about the graphical  stuff, even though that's maybe a bit more exciting, but for
+first step, it's better to just deal with the data itself.
+
+For example on the final product, if you send a GET request to https://www.natours.dev/api/v1/tours the response we get back, is the
+exact same tours that we see on the graphical interface(actual website).
+Also if you try to send a request for getting users(/api/v1/users), you can't access them, because we need to be authenticated. So we would
+need to log into our app.
+
+Let's implement the tours route. You COULD use v1 after the '/api' . So you can write: /api/tours or /api/v1/tours.
+It's a good practice to specify the API version.
+
+So basically you can branch off and create a new version of your API, while old users can still using the old one. But if we didn't use
+different versions and changed the current api, the api would break for the users that were using it. So it's good to have
+versioning. Otherwise, then the users wo started to use it before you did the changes, would run into problems.
+By doing this, in case you want to do some changes to your api, you can do that BUT then on V2(or one version upper - not the
+current version, because that would break the users who are using the current api and don't know about the changes), without breaking everyone
+who is still using v1.
+So we always should specify the version of the api. We could also do it in the subdomain, but it's easier to just simply include it in
+the url.
+
+The second arg of .get() or .post() or ... (that callback function which has the req, res ,...) is called route handler.
+Now in this case the tours is our resource. For sending back our data, we must first read the file of our data, but we must
+do this reading out side of route handler and at the top-level code (top-level code is only executed once which is rightafter the
+application starts.)
+
+The data in dev-data folder is an array of JSON objects which then has a bunch of data about each of the tours.
+
+Before we can send the data, we actually need to first READ it and so again, we don't do it(reading data) inside the route handler, but we
+dp it before and we can do that, because the top-level code is only executed once, which is right after the application startup.
+So only the route handlers(the callback functions) will run inside the event loop and so in route-handlers we can not have any blocking code
+which reading data is a blocking code. But outside of route-handlers, it is no problem at all.
+So let's simply read the tours into a variable outside of all of that handlers, in a synchronous way.
+Important: The code outside of route-handlers will only run when the server startups.
+
+It's better to require node.js core modules first and then require the dependencies that you installed with npm (IF you
+need the core modules of course!)
+
+Important: __dirname is the folder where the current script is located and in the case of app.js , that is that main folder(root??).
+
+When you want to send data, you must do it in Jsend format.So first we must add a status property code that can be either
+success, fail or error in our json and then data property which is called envelope for our data, would be an object that contains
+our actual data(the data that in response we want to send to client- But remember the format is key value pair,so we must use a
+key name for the data that is in the data object, in this case the key name is also named tours.)
+
+It's good to specify the status code always, even if 200 is standard, it's good to do it in each and every single response and for
+response, we want to use the JSend JSON formatting standard. So in that json, specify the status property and that can either be
+'success', 'fail' or 'error'.
+
+'success' status is for 200 or 201 or 2<><> status range(any code that starts with 200).
+'fail' is an error at the client.
+'error' is for when there was an error at the server.
+
+The data property at the JSend, is an envelope for our data. So we specify that data property and that data will then in turn have an
+object as it's value, which then contains the data or the response that we actually wanna send and for case of '/' route, we want to send
+the tours.
+Learn: In ES6, we don't need to specify the key value pair if they have a same name.But here we should specify the tours key,
+ because it's the name of the resource and also the name of the endpoint and this is why inside the data object we send back
+ the tours property.
+
+In data property of '/' route, we named it tours, because that is the name of the resource and of the endpoint and so that's why inside of
+the data property, we send back an object that has the tour property.
+
+So in this case, we read our data and then we formatted our response, using the JSend data specification.
+
+When we are sending MULTIPLE RESPONSES, it's good to include another field (or another key value pair) called `results` when
+we would have multiple results in response and in the results field we specify the number of results that we are sending back.
+(It's not a part of Jsend specification, but we do this because this makes very easy for client to get a very quick information about
+the data it is receiving.)
+Recap: So including the results property next to the status property only makes sense whenever we are sending an array(multiple objects),
+if we were sending only one tour, we wouldn't do this.
+
+At this point we have like a file-based API, so we're reading that data from an API, but later we're gonna store this data in a DB and then
+read it from there.
+
+Now let's take care of the POST request, so that we can add a new tour to our data.
+
+53-7. Handling POST Requests:
+Just as we talked about in the REST API lecture, the url is exactly the same here. So no matter if we want to get all the tours, or if we
+want to create a new tour, the url is exactly the same. The only thing that changes in this case, is the http method that we use for doing
+these requests.
+
+We know that req object holds all the data about the request that was done from the client. But Out of the box(in POST request I'm talking),
+express does not put that body data on the request and in order to have that data available on the req object, we
+have to use something called middleware. So we need to include a simple middleware at the top of the app.js file.
+So we say : app.use(express.json()); In this piece of code, express.json() is a middleware and middleware basically is just
+a function that can modify the incoming request data. So it's called middleware because it stands BETWEEN, or in the middle of
+request and response. So it's just a step that the request goes through, while it's being processed and the step that request goes
+through in this case is simply that the data from the body, is added to req object by using that middleware. So body is a property that
+will available on the req object because we used that middleware.
+We use app.use() to use a middleware inside of the parentheses.
+
+By using that express.json() middleware, body is the property that is gonna be available on the req, because we used that middleware a couple
+of moments ago.
+
+Learn: When using app.use(express.json()) middleware, when the client send some json to the server in a for example, POST request,
+ req.body would no longer in JSON format but is a JS object. If you don't use that middleware, the req.body would be undefined, because
+ it no longer exists.
+ Also remember that in order to actually get the body data from the req that sent to our server, the request must be in JSON format
+ and not anything else!
+
+Important: We always have to send back something in order to finish the request/response cycle.
+
+In postman, first, you can create a new collection and then save requests in that collection(later we will put the requests in their
+related resource folder which those resource folders are inside that collection).
+
+The body tab in postman is the data that we want to send to the server and there are different ways of doing it, but the easiest one is
+to select raw and then JSON(application/json) and then specify some json which that will then get transimtted to the server.
+
+Now we want to persist the data we get from the post request, into tours-simple.json file. So we're gonna modify that file, so that the
+data is saved to our fictional DB which is that file. So that file kinda works as our fictional DB.
+The first thing we need to do in this case, is to figure out the id of the new object. So remember, again in the lecture about REST APIs,
+important: when we create a new object, we never specify the id of that object, the DB usually takes care of that. So a new object
+ (which in this case, is coming from POST request), usually automatically gets it's new id.
+Well in this case, we do not have any DB and so what we're gonna do is to simply take the id of the last object and then add 1 to that.
+Also, we already have the data in that tours variable(const tours = JSON.parse(fs.readFileSync(`${__dirname}/dev-data/data/tours-simple.json`)));
+and that's an array of all the tour object and we want to get the last one which is tours[tours.length - 1];
+Then we created newTour constant, which will be the body that we send plus the new id that we just created.
+Important: Object.assign() allows us to create a new object by merging two existing objects together.
+In this case, the first object is gonna be: {id: newId} and then req.body object. So in this case, the {id: newId} is the first object and
+req.body is the second object that we merge together. Now we could also had done: req.body.id = newId; but we did not want to mutate
+the original body object and therefore we just left it like that.
+So that is the new tour and now what we want to do is to push that tour into the tours array. So use push() .
+So now, the tours array has the newTour in it, but of course now we have to PERSIST that into the file. So we need to write into the file,
+but which method do we use? writeFile() or writeFileSync()?
+We're inside of a call back function that is gonna run in the event loop and so we can never, ever block the event loop. So what we're
+gonna do is to use writeFile() and not the sync version in this case. So we want to pass in a callback function that is gonna be processed in
+the background and as soon as it's ready, it's gonna put it's event in one of the event loop queue, which is then gonna be handled, as soon as
+the event loop passes that phase.
+
+The first arg of writeFile() is the path to file where we want to write to, the second arg is the data we want to write it and then our
+callback function.
+Remember: The tours variable right now, is just a plain normal JS object and so we need to convert that to JSON, because the data in
+tours-simple.json file are in JSON format. So use JSON.stringify() .
+In callback function, we specify what we want to do as soon as the file is written. What we usually do, is to send the newly created object
+as the response.
+The status code in this case, is not gonna be a 200, but a 201 which means: created.
+200 stands for ok, 201 stands for created. In this case, we created a new data for our resource on server(created a new resource on the
+server).
+Because we're sending only one result, we don't specify the results property in response. In response object, data is our envelope.
+
+So:
+EX)
+app.post('/api/v1/tours', (req, res ) => {
+  const newId = tours[tours.length - 1].id + 1;
+  const newTour = Object.assign({id: newId}, req.body);
+
+  tours.push(newTour);
+  fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`, JSON.stringify(tours), err => {
+    res.status(201).json({
+      status: 'success',
+      data: {
+        tour: newTour
+      }
+    });
+  });
+});
+
+Create a new tour.
+app.post('/api/v1/tours', createTour);
+app.patch('/api/v1/tours/:id', updateTour);
+app.delete('/api/v1/tours/:id', deleteTour);
+
+When we want to for example change the version of our api or change the resource name, we must change those in all of our routes.
+So we must do it in better way(best practices).
+Learn: app.route('/api/v1/tours').get(getAllTours()); is exactly as app.get('/api/v1/tours', getAllTours); and for other http methods is
+ like this one. But the advantage of first piece of code is that we can chain the post http method and other http methods that have
+ the same route. So with this style, we only use the url, once for all of the http methods that have same route. So editing the urls
+ now is a lot easier.
+
+When you get this error:
+Error: [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client.
+happens when you try to send two responses(so 2 times of res.send())*/
+/* The callback function after the url is called route handler. For better practice, we can export all of the handler functions and
+create a new function out of them for each one.
+
+Currently, if you send a GET request to /api/v1/tours , the newly created tours shouldn't yet show up. BUUUUT IT IS ALREADY THERE!
+Why?
+Because I THOUGH(which in this case wrong!), that the newly created tour wouldn't show up right away, because that only works if we
+restart the server. Because that tours-simple.json file is only read AT THE BEGINNING when we START THE SERVER. Why? Because we wrote it
+at the top of app.js file, so it would be executed ONLY when we start the server.
+But the thing that invalidate my thought, is that each time we SAVE STH to that JSON file, it will also RELOAD THE SERVER and that's why
+each time we save sth there with our api, it will then immediately reload the server and will reload the content from the file into the
+tours variable, which is in the top of app.js and we can then read that right away and so that's why we have access immediately to all the
+newly created tours. */
+/* 54-8. Responding to URL Parameters:
+Let's look at an easy way of defining parameters right in the url, how to then read those parameters and also how to respond to them.
+If we hit the /tours endpoint without any id, then we would get all the tours, but if we would specify an id in the url like: /tours/5 and
+of course it doesn't have to be an id, it can be any unique identifier, it would give us only one tour.
+That id in url is a variable, because it can be anything and so that piece of url, is a variable and so we need to define a route which
+can ACCEPT a variable.
+
+A route is basically a URL and also the http method.
+ app.get('/', (req, res) => {
+
+     Into .json() method we must pass in an JS object and also by using .json() method, the 'Content-Type' of our header for response
+     automatically set to 'application/json' . But if you don't use express, it wouldn't set to 'application/json' automatically.
+     Also express set some other headers automatically in our responses.
+    res.status(200).json({
+        message: 'Hello from server!',
+        app: 'Natours API'
+    });
+});
+
+
+ app.post('/', (req, res) => {
+     res.send('OK this is post');
+ });
+
+ Remember: __dirname is the folder where the current script is located (the script that we are actually running the __dirname
+from it.)
+ IMPORTANT: We use JSON.parse() to convert a json string to an array of JS objects.
+ Each time we save something in this file with our api (like creating a new tour in the file), it will then immidiately reload the server and
+ will reload the content from the file into the tours variable and then we can read that right away.
+
+ const appFileName = __dirname.replace(/\\/g, '/');
+ const tours = JSON.parse(fs.readFileSync(`${appFileName}/dev-data/data/tour-simple.json`));
+
+2) Route handlers
+
+ app.get('/api/v1/tours', getAllTours);
+
+The id (for example 5) in the URL is a variable. So we must define a route which can accepts a variable and we define that
+variable in URL with :<variable>. So we define a variable using colon in url. So with :id, we created a variable called `id`.
+req.params is where all of the parameters (all of the variables) that we defined in the URL are stored there.(The variables in the
+URL are called parameters and they live in req.params .)
+req.params is an object which automatically assigns the value to the parameters of that route.
+
+If you have a route like '/api/v1/tours/:id/:x' and in request URL, you send a request to '/api/v1/tours/:id', there would be an error.
+Because we are not hitting that EXACT URL(route) that we defined in our server, but an other URL, so it would throw an error. But we can
+also make optional parameters by saying :y? and the y would be optional, so if we don't specify it, it(the y property) would be undefined
+in req.params and won't throw an error.
+Learn: .find() works on arrays and in () of this method we pass in a callback function and this method will loop through the array
+ automatically and in each of the iterations, we will have access to the current element and we will return either true or false in
+ each of the iterations.Now what the .find() method will then do is that it basically create an array which only contains the element where
+ the condition is true about that element.
+ So with this condition we specified in the callback function we ensure that only the element where the condition is true about it,
+ will get returned from the .find() method and stored in the tour variable.
+EX) const tour = tours.find();
+
+app.get('/api/v1/tours/:id', getTour);
+
+Learn: The values that come from the URL parameters are string.
+So in this case, we need to convert the id parameter to number for comparison in find() method. So we can multiplies it by 1.
+This is a nice trick that when we multiply a string that looks like a number (like '23') with a real number, that string will
+then automatically converted to a number.
+
+Also tours[tours.length - 1] is the last item in tours array.
+
+So we need to convert req.params.id to a number.
+const id = req.params.id * 1;
+const tour = tours.find(el => el.id === id);
+
+Currently, if you request for a tour that doesn't exist, like hitting the url with id of 23, we get nothing back, but we still return
+200 ok as the status code of this response and that doesn't make sense.
+As a very simplistic solution, what we want to do is to check if the inputted id is valid or not? (if it exists in our file or not?).
+In this case, we want to check if the id is larger than the length of the tours array and if it is longer, then we can send back a 404
+error and say that we could not find any tour of that given id.
+
+First solution: We want to exit this function right now and we don't want to calculate tour variable or any other code further,
+so we say: return ... .
+
+When we have a 400 code status, we can say 'fail' in json.
+
+Another solution to find out if an inputted id by user is invalid is to first calculate the tour variable(find the tour
+based on the inputted id from user) and then if statements...
+
+First solution:
+
+Important: Always, check if the user input is valid and safe, so if it doesn't contain any malicious code or really anything that we don't
+ want in our app.
+
+I commented out these lines, because we are using this exact code in param middleware in this file(tourController) to avoid repeatness of code.
+const id = req.params.id * 1;
+const tour = tours.find(el => el.id === id);
+
+  if (id > tours.length) {
+      return res.status(404).json({
+          status: 'fail',
+          message: 'Invalid ID'
+      });
+  }
+
+Second solution:
+We get the id from user's input(after some validation), then we would try to find a tour and if there was no tour, then we would say that
+the id is invalid.
+Remember: The result of find, if there wasn't any element matching that condition, is undefined. So we CAN check for !id here.
+  if (!tour) {
+      If tour is undefined:
+      return res.status(404).json({
+          status: 'fail',
+          message: 'Invalid id'
+      });
+  } */
+/* 55-9. Handling PATCH Requests:
+ */
+
+/*
+3)Routes
+When you have multiple routers, you must use a process called mounting.
+Right now, all of our routes (for example '/api/v1/tours'), they are all kind of on the same router and that router is app object.
+If we want to separate our routes into different files (one file for users routes and one file...), we must create one router for
+each of the resources.
+For creating new router, we say: express.Router() and save it to a variable and that variable becomes the router. Now we can use this
+variable instead of app.route() .... . Because remember: app was our earlier router:
+EX) app
+     .route('/api/v1/tours')
+     .get(getAllTours)
+     .post(createTour);
+
+Now evey route that we put in tourRoutes.js file is relative to '/api/v1/tours' URL. Because this URL is the base URL for any route in
+tourRoutes.js file.
+Important: The whole router in tourRoutes.js is mounted on '/api/v1/tours' route. So all of the routes in that file are related to
+ '/api/v1/tours' URL. Because they are mounted on this URL. */
 /* request-response cycle: To start this cycle, our express app receives a request when someone hits our server and then it will
 create a req object and a res object. That data will then be used and processed in order to generate and send back a meaningful
 response. Now, in order to process that data in express, we use something called middleware. Middleware can manipulate the
@@ -429,28 +747,6 @@ Instead, we finally send the response data back to the client.So with this, we f
 So this cycle starts with the incoming request then executes all the middlewares in middleware stack step by step and finally send the
 response to finish the cycle.
 Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack. */
-
-/* You can branch off and create a new version of your API, while old users can still using the old one.But if we didn't use
-different versions and changed the current api, the api would break for the users that were using it. So it's good to have
-versioning. */
-/* The second arg of .get() or .post() or ... (that callback function which has the req, res ,...) is called route handler.
-Now in this case the tours is our resource. For sending back our data, we must first read the file of our data, but we must
-do this reading out side of route handler and at the top-level code (top-level code is only executed once which is rightafter the
-application starts.) */
-/* When you want to send data, you must do it in Jsend format.So first we must add a status property code that can be either
-success, fail or error in our json and then data property which is called envelope for our data, would be an object that contains
-our actual data(the data that in response we want to send to client- But remember the format is key value pair,so we must use a
-key name for the data that is in the data object, in this case the key name is also named tours.)
-Learn: In ES6, we don't need to specify the key value pair if they have a same name.But here we should specify the tours key,
- because it's the name of the resource and also the name of the endpoint and this is why inside the data object we send back
- the tours property.*/
-/* It's better to include another field (or another key value pair) called results when we would have multiple results in response
-and in the results field we specify the number of results that we are sending back. (It's not a part of Jsend specification, but
-we do this because this makes very easy to client to get the information that he is receiving very quickly.)
-Recap: So we must send back the results field, whenever we are sending back an array (multiple JS objects), if we were sending
-only one tour, we wouldn't do this.*/
-/* The callback function after the url is called route handler. For better practice, we can export all of the handler functions and
-create a new function out of them for each one. */
 
 /* node.js or express apps can run in different environments and the most important ones are development environment and the
 production environment. So depending on environment, we might use different db for example, or we might turn login on or off,
