@@ -568,18 +568,6 @@ app.post('/api/v1/tours', (req, res ) => {
   });
 });
 
-Create a new tour.
-app.post('/api/v1/tours', createTour);
-app.patch('/api/v1/tours/:id', updateTour);
-app.delete('/api/v1/tours/:id', deleteTour);
-
-When we want to for example change the version of our api or change the resource name, we must change those in all of our routes.
-So we must do it in better way(best practices).
-Learn: app.route('/api/v1/tours').get(getAllTours()); is exactly as app.get('/api/v1/tours', getAllTours); and for other http methods is
- like this one. But the advantage of first piece of code is that we can chain the post http method and other http methods that have
- the same route. So with this style, we only use the url, once for all of the http methods that have same route. So editing the urls
- now is a lot easier.
-
 When you get this error:
 Error: [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client.
 happens when you try to send two responses(so 2 times of res.send())*/
@@ -705,6 +693,72 @@ Remember: The result of find, if there wasn't any element matching that conditio
       });
   } */
 /* 55-9. Handling PATCH Requests:
+We have two http methods to update data, PUT and PATCH. With PUT, we expect that our application receives the ENTIRE new updated object
+and with PATCH, we only expect the properties that should actually be updated on the object. So usually the tutor likes to use PATCH, because
+he find it easier to simply update the properties that were updated. At least, when we start using mongo and mongoose, it will be much easier
+to just do it like that. That's also easier for the user to simply send the data that is changing, instead of having to send the entire
+new object. So again, we're gonna make our app work for PATCH and not for PUT. So we expect a PATCH request to come in on the url of:
+'/api/v1/tours/:id' and also we need the id of the tour that should be updated. So the url must also have :id .
+
+Remember: When you CREATE a new thing on resource, we send that newly created data back. For updating a tour in format of file-based DB,
+we would have to get that tour with that received unique identifier from the JSON file, then change that tour and then save it again to that
+file.
+
+When we update an object or a resource, we send back 200(OK) as status code and as data, we send back that updated data(in the case of
+updating a tour, we send back that updated tour).
+
+56-10. Handling DELETE Requests:
+When we have a delete request, the response is usually 204 status code and 204 means : no content and this is because as a result
+we usually don't send back any data. Instead we just send null as response(the data property would be set to null). The status is still
+'success', but the data property is null, in order to show that the resource that we deleted now no longer exists. So that is what null
+means in this context. So it's pretty similar to PATCH, the difference here in this case is, that we change the DELETE method and status code
+and the data that we send back.
+We must set the resource (in this case tour) to null to show the resource that we deleted no longer exists.
+In this case, postman will show us no content at all. Even won't show the json we send back to the user of API. But it gives them
+204 status code.
+Remember: In restful API, it's a common practice to not to send back any data to client, when there's a delete request.
+So we didn't store the result of Tour.findByIdAndDelete() to any variable.
+
+57-11. Refactoring Our Routes:
+Ideally, all the routes should kind of be together and then the handler functions also together, so they must be separate from the routes.
+So let's export all of those handler functions into their own function.
+Now cut the handler function of the routes and create a function for each of them.
+For example:
+EX)
+const getAllTours = (req, res) => {...};
+and then, as the second arg of app.get('/api/v1tours', ) pass ONLY the name of the function WITHOUT any ().
+Other handler function names are:
+getTour() for /tours/:id, createTour(), updateTour(), deleteTour() .
+
+Now we can do even better. Because let's say that we want to for example change the version(currently it's v1) or the resource name, we
+would then have to change it in all of those places(currently 5 places).
+
+...
+app.post('/api/v1/tours', createTour);
+app.patch('/api/v1/tours/:id', updateTour);
+app.delete('/api/v1/tours/:id', deleteTour);
+
+When we want to for example change the version of our api or change the resource name, we must change those in all of our routes.
+So we must do it in better way(best practices). So we use app.route() .
+Learn: app.route('/api/v1/tours').get(getAllTours); is exactly as app.get('/api/v1/tours', getAllTours); and for other http methods is
+ like this one. But the advantage of first piece of code is that we can chain the post http method and other http methods that have
+ on that same route. So with this style, we only use the url, once for all of the http methods that have same route. So editing the urls
+ now is a lot easier.
+So with this way, we have now created an even better way of writing a route, because right now, the url is not repeated for GET and
+POST in this case.
+So now we have:
+app.route('/api/v1/tours')
+   .get(getAllTours)
+   .post(createTour)
+
+Now let's do the same for the other route('/api/v1/tours/:id')
+So instead of repeating the url for each http method, we make the same urls together and then chain the http methods that use the same
+url.
+Recap: We separated our handler function of the routes itself, so that we can later actually, even export those into another file.
+
+So the same actions for each of the routes, are now together. */
+
+/* 58-12. Middleware and the Request-Response Cycle:
  */
 
 /*

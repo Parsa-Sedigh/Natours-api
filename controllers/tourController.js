@@ -393,7 +393,7 @@ exports.getTour = catchAsync(async (req, res, next) => {
     Also it is very crucial to say return here. Because we don't want to execute any further code after creating this error.
     As soon as next() receives something, it assumes that is an error and will jump straight into global error handling
     middleware which this middleware will send the response from our API. */
-    return next(new AppError('No tour found with that ID.', 404));
+    return next(new AppError("No tour found with that ID.", 404));
   }
 
   res.status(200).json({
@@ -516,7 +516,7 @@ exports.updateTour = catchAsync(async (req, res, next) => {
   });
 
   if (!tour) {
-    return next(new AppError('No tour found with that ID.', 404));
+    return next(new AppError("No tour found with that ID.", 404));
   }
 
   res.status(200).json({
@@ -528,15 +528,7 @@ exports.updateTour = catchAsync(async (req, res, next) => {
 
 });
 exports.deleteTour = catchAsync(async (req, res, next) => {
-  /* When we have a delete request, the response is usually 204 status code and 204 means : no content and this is because as result
-  * we usually don't send back any data.Instead we just send null as response.
-  * We must set the resource (in this case tour) to null to show the resource that we deleted no longer exists.
-  * In this case, postman will show us no content at all. Even won't show the json we send back to the user of API.But it gives them
-  * 204 status code.
-  * Remember: In restful API, it's a common practice to not to send back any data to client, when there's a delete request.
-  * So we didn't store the result of Tour.findByIdAndDelete() to any variable.
-  *
-  * We need to save the result of awaiting the Tour.findByIdAndDelete(req.params.id) . */
+  /* We need to save the result of awaiting the Tour.findByIdAndDelete(req.params.id) . */
   // try {
   //     await Tour.findByIdAndDelete(req.params.id);
   //     res.status(204).json({

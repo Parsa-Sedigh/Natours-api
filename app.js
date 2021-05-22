@@ -213,20 +213,19 @@ For example when we have 404, we have 'fail' status.
 
 app.use(globalErrorHandler);
 
-/*
-* Now how we connect this new router with our application? We will use it as middleware and this is because this new modular tool router (tourRouter
-* variable), is actually a real middleware. So we can create a app.use() for these routers and say we want to add this middleware to
-* our application or middleware stack on '/api/v1/tours' route.
-* Important: So by using this app.use() and specifying the route in first arg, we can specify WHERE we want to add this middleware to
-*   our app (middleware stack).
-* So we want to use the tourRouter middleware for a specific route that is specified in first arg of app.use().
-* Learn: So if you specify a route (URL like thing!) in first arg of app.use(), the middleware that is specified in second arg would be
-*  used in that exact URL and not anywhere else. So with this, we created a sub application. Now we must change the url in .route() methods
-*  relative or based on url we used in first arg of middleware.
-*  Now why we must change those urls? Because the '/api/v1/tours' is already in the parent route of our mini application. So we just
-*  specify the additional or continuation of the url in .route() methods.
-*
-*  Now when a request goes into the middleware stack and after that if it's url hits '/api/v1/tours' url, the tourRouter middleware function
+/* Now how we connect this new router with our application? We will use it as middleware and this is because this new modular tool router (tourRouter
+variable), is actually a real middleware. So we can create a app.use() for these routers and say we want to add this middleware to
+our application or middleware stack on '/api/v1/tours' route.
+Important: So by using this app.use() and specifying the route in first arg, we can specify WHERE we want to add this middleware to
+ our app (middleware stack).
+So we want to use the tourRouter middleware for a specific route that is specified in first arg of app.use().
+Learn: So if you specify a route (URL like thing!) in first arg of app.use(), the middleware that is specified in second arg would be
+ used in that exact URL and not anywhere else. So with this, we created a sub application. Now we must change the url in .route() methods
+ relative or based on url we used in first arg of middleware.
+ Now why we must change those urls? Because the '/api/v1/tours' is already in the parent route of our mini application. So we just
+ specify the additional or continuation of the url in .route() methods.
+
+* Now when a request goes into the middleware stack and after that if it's url hits '/api/v1/tours' url, the tourRouter middleware function
 * will run. So the tourRouter is a sub application which has it's own routes and if the request was for / , the http methods for '/api/v1/tours'
 * would run and if the request was for /:id the http methods for '/api/v1/tours/:id' would run. So '/:id' in sub application means:
 * '<entire route>/:id'
@@ -259,8 +258,8 @@ But we will also create a separate file for each resource route handlers functio
 * After that we must cut the route handler functions and take them to controllers folder.
 * Important: In MVC architecure, the route handler functions are called controllers.So we put them in controller files.
 Learn: In MVC structure, we start by receiving a request in app.js file, and then this request depending on the it's requested route
-   (the resource that it wants), enters one of our routers and then depending on the requested route(url), the router will execute
-   one of the controllers and that's where finally the response gets sent and finishing the request-response cycle.
+ (the resource that it wants), enters one of our routers and then depending on the requested route(url), the router will execute
+ one of the controllers and that's where finally the response gets sent and finishing the request-response cycle.
 
    After all of this we have to create server.js file too. We create this file, because it's a good practice to have everything
    that is related to express, in one file (app.js) and then everything is related to the server in another main file.
