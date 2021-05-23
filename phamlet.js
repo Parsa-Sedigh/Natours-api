@@ -759,7 +759,55 @@ Recap: We separated our handler function of the routes itself, so that we can la
 So the same actions for each of the routes, are now together. */
 
 /* 58-12. Middleware and the Request-Response Cycle:
- */
+Let's see how express works and for that, we need to talk about middleware and the request-response cycle.
+
+request-response cycle: To start this cycle, our express app receives a request when someone hits our server, for which it will then
+create a req object and a res object. That data will then be used and processed in order to generate and send back a meaningful
+response. Now, in order to process that data, in express, we use something called middleware. Middleware can manipulate the
+req or res objects or execute any other code that we like. So middleware doesn't always have to be just about the req or res object,
+but it usually is mostly about the request.For example we used express.json() to get access to the request body on the req object.
+Now it's called middleware because it's a function that is executed BETWEEN, so in the MIDDLE of receiving the request and sending the response.
+So we can say in express, EVERYTHING is basically a middleware. Even our route definitions. So again, even when we defined our routes,
+we can think of the route handler functions that we wrote, as middleware functions. They are simply middleware functions that are only
+executed for certain routes. Another middleware is express.json() which is also called body parser. Or some  logging functionality or
+setting some specific http headers. The possibilities are endless with middleware.
+All the middleware together that we use in our app, is called the middleware stack.
+Important: The order of middleware in the stack, is actually defined by the order they are defined in the code.So a middleware
+ that appears first in the code, is executed before another middleware that appears later.So the order of code matters a lot in express.
+
+You can think of the whole process like this:
+Our request and response objects that were created in the beginning, go through each middleware where they are processed or where
+just some other code is executed. Then at the end of each middleware function, a next() function is called, which is a function
+that we have access to in each middleware function (Just like req and res objects that we have access in each middleware).
+So when we call next(), the next middleware in the stack will be executed with same req and res objects and this happens with all
+the middlewares, until we reach the last middleware and so just like this, the initial req and res objects, go through each middleware,
+step by step and You can think of this whole process, as kind of a pipeline where our data goes through(so just like it's been piped) from
+request to final response.
+About that last middleware function, it's usually a route handler. So in that handler, we actually don't call the next() function to move to NEXT
+MIDDLEWARE(So we don't call next() to go to next MIDDLEWARE, but maybe we call next() to go to another route handler function! All right?)
+Instead, we finally send the response data back to the client.So with this, we finish the request-response cycle.
+So this cycle starts with the incoming request then executing all the middlewares in middleware stack step by step and finally sending the
+response, to finish the cycle. Important: It's a linear process.
+Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack.
+
+The essence of express development: The request-response cycle:
+
+"Everything is middleware"(even routers)          "pipeline"
+
+                --------------------------------middleware stack-----------------------
+                                              (order as defined in the code)
+
+                     // middleware    //middleware      // middleware      // middleware
+incoming request --- ...         ---- ...         ----- ...         -----  ...          --------->  response
+                     next()           next()            next()             res.send()
+                     ^                  ^                 ^                     ^
+                     |                  |                 |                     |
+                e.g: parsing body    e.g: logging   e.g: setting headers      e.g: router
+
+--------------------------------request-response cycle------------------------------------------------------
+
+59-13. Creating Our Own Middleware:
+*/
 
 /*
 3)Routes
@@ -774,33 +822,10 @@ EX) app
      .get(getAllTours)
      .post(createTour);
 
-Now evey route that we put in tourRoutes.js file is relative to '/api/v1/tours' URL. Because this URL is the base URL for any route in
+Now every route that we put in tourRoutes.js file is relative to '/api/v1/tours' URL. Because this URL is the base URL for any route in
 tourRoutes.js file.
 Important: The whole router in tourRoutes.js is mounted on '/api/v1/tours' route. So all of the routes in that file are related to
  '/api/v1/tours' URL. Because they are mounted on this URL. */
-/* request-response cycle: To start this cycle, our express app receives a request when someone hits our server and then it will
-create a req object and a res object. That data will then be used and processed in order to generate and send back a meaningful
-response. Now, in order to process that data in express, we use something called middleware. Middleware can manipulate the
-req or res objects or execute any other code that we like.So middleware doesn't always have to be just about the req or res object.
-But usually it is about request.For example express.json() is to access to the request body on the req object.Now it's called middleware
-because it's a function that is executed between or in the middle of receiving the request and sending the response.So we can say everything
-is basically a middleware.Even our route defenitions. Or express.json() which is also called body parser is a middleware. Or some
-logging functionality or setting some specific http headers.
-All the middleware together that we use in our app, is called the middleware stack.
-Important: The order of middleware in stack, is actually defined by the order they are actually defined in the code.So a middleware
- that appears first in the code, is executed before another middleware that appears later.So the order of code matters a lot in express.
-Our request and response object that were created in the beginning, go through each middleware where they are processed or where
-just some other code is executed.Then at the end of each middleware function, the next() function is called, which is a function
-that we have access to in each middleware function (Just like req and res objects that we have access in each middleware).
-So when we call next(), the next middleware in the stack will be executed with same req and res objects and this happens until
-we reach the last middleware.
-You can think the whole process as kind of pipeline where our data goes through.
-The last middleware function is usually a route handler.So in this handler we actually not call the next() function to move to NEXT
-MIDDLEWARE(So we don't call next() to go to next MIDDLEWARE, but maybe we call next() to go to another route handler function! All right?)
-Instead, we finally send the response data back to the client.So with this, we finish the request-response cycle.
-So this cycle starts with the incoming request then executes all the middlewares in middleware stack step by step and finally send the
-response to finish the cycle.
-Learn: In order to use middlewares, we use app.use(). So use() method adds that middleware to the middleware stack. */
 
 /* node.js or express apps can run in different environments and the most important ones are development environment and the
 production environment. So depending on environment, we might use different db for example, or we might turn login on or off,
