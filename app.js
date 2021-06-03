@@ -3,8 +3,6 @@
 // const fs = require('fs');
 const express = require("express");
 
-/* morgan is a 3ed party logging middleware function that allow us to see request data in the console. This package makes development easier
-* but still IT IS SOME CODE that we include in our app so this package is not a development dependency and it's a regular dependency. */
 const morgan = require("morgan");
 
 const tourRouter = require("./routes/tourRoutes");
@@ -17,18 +15,12 @@ const app = express();
 
 //1) Middlewares
 
-/* Calling the morgan() will return a function similar to (req, res, next) => {...} function, because this is how a middleware function
-* has to look like.
-* Remember: When we require the morgan package, what will get returned is the morgan function. Because they used module.exports(). and the
-* morgan function actually returns another function called logger and this logger function has the typical middleware signature which
-* is (req, res, next) => {...} and in the end it calls next().
-* After using this middleware if client send a request to server, we get http method, the url, the status code, the time it took to
-* send back the response and also the size of response in bytes. You can also save these logs to a file.
-*
-* You might ask why we have access to the NODE_ENV env variable when we didn't define them in this file but in server.js . So how
-* it is possible? The reading of the variables from .env file and save it to node process, only needs to HAPPEN ONCE. After that
-* those variables are in the process and process is available no matter which file we're currently in.
-* Important: The next if statement and other codes like that are codes that run based on the environment of our application. */
+/*
+
+You might ask why we have access to the NODE_ENV env variable when we didn't define them in this file but in server.js . So how
+it is possible? The reading of the variables from .env file and save it to node process, only needs to HAPPEN ONCE. After that
+those variables are in the process and process is available no matter which file we're currently in.
+Important: The next if statement and other codes like that are codes that run based on the environment of our application. */
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
@@ -216,42 +208,16 @@ app.use(globalErrorHandler);
 /* Now how we connect this new router with our application? We will use it as middleware and this is because this new modular tool router (tourRouter
 variable), is actually a real middleware. So we can create a app.use() for these routers and say we want to add this middleware to
 our application or middleware stack on '/api/v1/tours' route.
-Important: So by using this app.use() and specifying the route in first arg, we can specify WHERE we want to add this middleware to
- our app (middleware stack).
-So we want to use the tourRouter middleware for a specific route that is specified in first arg of app.use().
-Learn: So if you specify a route (URL like thing!) in first arg of app.use(), the middleware that is specified in second arg would be
- used in that exact URL and not anywhere else. So with this, we created a sub application. Now we must change the url in .route() methods
- relative or based on url we used in first arg of middleware.
- Now why we must change those urls? Because the '/api/v1/tours' is already in the parent route of our mini application. So we just
- specify the additional or continuation of the url in .route() methods.
 
-* Now when a request goes into the middleware stack and after that if it's url hits '/api/v1/tours' url, the tourRouter middleware function
-* will run. So the tourRouter is a sub application which has it's own routes and if the request was for / , the http methods for '/api/v1/tours'
-* would run and if the request was for /:id the http methods for '/api/v1/tours/:id' would run. So '/:id' in sub application means:
-* '<entire route>/:id'
-*
-* So mounting a new router on a route is called mounting router.
-* Remember: First you have to create the router variable and THEN use app.use() to use that router to create sub applications. So we can not use
-* routers before we declare them.
-*
-* Important: You could place app.use() middlewares after defining the routes. So after codes like tourRouter.rote()... or userRouter..... ,
-*  you could place app.use(...) . But YOU MUST PLACE app.use() codes AFTER DEFINING THE ROUTER VARIABLES. Because you must initialize the router
-*  variable before using it.
- It's better so separate routers into different files. So we should cut
-tourRouter
-    .route('/')
-    .get(getAllUsers)
-    .post(createUser);
-and any other router and take it to it's separate file. Also we take the route handler functions and take them to those separate router files too.
-But we will also create a separate file for each resource route handlers functions too.
- For example : app.use('/api/v1/tours', tourRouter) means: mounting the routers (like tourRouter) on different routes(like '/api/v1/tours').
-* Learn: Each router is kind of mini sub-application for each resource.
- By separating routers into different files like tourRoutes.js and ... , now each of those files is one small sub application.For
-* example: We have one tour application and one user application and then we put everything together in our global app.js file. By
-* importing the routers (like userRouter and ...) and then mounting those routers on different routes.
-* So we created different routers for each different resources to have a nice separation of concern between the resources.So basically create
-* one small application for each of them and then put everything together in one main app.js file.
-* Important: This app.js file is mainly used for middleware declarations. So we have all our middlewares that we want to apply to ALL
+
+
+
+By separating routers into different files like tourRoutes.js and ... , now each of those files is one small sub application.For
+ example: We have one tour application and one user application and then we put everything together in our global app.js file. By
+ importing the routers (like userRouter and ...) and then mounting those routers on different routes.
+ So we created different routers for each different resources to have a nice separation of concern between the resources.So basically create
+ one small application for each of them and then put everything together in one main app.js file.
+ Important: This app.js file is mainly used for middleware declarations. So we have all our middlewares that we want to apply to ALL
 *  of the routes and then also we have some middlewares that will apply for some specific routes only, in this main file.
 * Learn: So tourRouter and ... are routers and also are middlewares and because of they're middlewares, we can use app.use() in order to mount
 *  them.

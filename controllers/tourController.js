@@ -843,7 +843,7 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
 });
 
 /* Because we don't have only one thing to export, so we are not going to use module.exports, but instead we will put all of the
-* things we want to export inside exports object. So for example instead of saying :
-* const getAllTours = () => {...};
-* we must say:
-* exports.getAllTours = () => {...}; */
+things we want to export inside exports object. So for example instead of saying :
+const getAllTours = () => {...};
+we must say:
+exports.getAllTours = () => {...}; */

@@ -807,25 +807,265 @@ incoming request --- ...         ---- ...         ----- ...         -----  ...  
 --------------------------------request-response cycle------------------------------------------------------
 
 59-13. Creating Our Own Middleware:
-*/
+In order to use middleware, we use app.use() . So the use() method is the on e that we use, in order to use middleware and
+important: using a middleware means add that middleware to the middleware stack.
+When you have: app.use(express.json()), by calling that json() method, it returns a function and so that function is then added to
+the middleware stack and similar to that, we can create our own middleware function. So first write: app.use() and then in () of .use() ,
+we need to pass in our function that we want to add to the middleware stack.
+Important: remember: In each middleware FUNCTION, we have access to the req and res object. But also, we have access to the next function which
+ is the third arg of middleware function and like that, express then knows that we are actually defining a middleware there.
+Just like before, we could have called those arguments of middleware function sth else, for example we could name the next (third arg of
+middleware functions) arg, x or n , it doesn't matter, what matters is that it's the third argument to that function. So express basically
+passes the `next` function as the third argument into that middleware function and we can then call it whatever we want.
+If we don't call next() in middleware, then the request-response cycle would be stuck at that point and we wouldn't be able to move on and
+we would never ever send back a response to the client. So it's crucial to never forget to use next(), in all of your middlewares.
+Now for testing our own new middleware, we need to send a simple request to our api and currently which api doesn't matter, because that
+of course, applies to every single request and after sending request, you see the code in our middleware gets executed. But why that middleware
+which we currently is placed in the beginning of app.js , applies to each and EVERY single request?
+Because we didn't specify any route. Remember, I said that all route handlers are kind of middleware themselves.
+Important: They(route handler functions) are simply middleware functions that ONLY apply for a certain url(route). But those more simple
+ middleware functions that we define for example in the beginning of app.js (which aren't responsible for any routes and are before the
+ route handlers), they are gonna apply to EVERY SINGLE request. Why I said "if they were before the route handler functions"?
+ Because after the middleware chain of route handler functions ends, the middlewares that are AFTER the route handlers won't get called!
+ At least, if the route handler comes before(I think tutor is wrong, it must be AFTER) that generic middlewaer.
+ So if we cut that middleware from beginning of app.js and paste it AFTER the route handler middleware function which would
+ be called(is responsible) for the request that we're gonna send.
 
-/*
-3)Routes
+What do you think is gonna happen now?
+EX)
+app.route('/api/v1/routes')
+   .get(<route handler function>)
+
+// the generic middleware:
+app.use((req, res, next) => {... next()})
+
+In this example, that generic middleware wouldn't get called if you send request to /api/v1/routes. Why?
+Because that route handler comes BEFORE that generic middleware and we know that at the end of the chain of route handler functions,
+the request/response cycle gonna end(for example by sending a response(result) with res.json()) and therefore the next middleware in the
+middleware-stack which in this example is that generic middleware will then not be called(again, because the cycle has already finished).
+So order matters a lot in express.
+
+Now if you had:
+EX)
+app.route('/api/v1/routes')
+   .get(<route handler function>)
+
+// the generic middleware:
+app.use((req, res, next) => {... next()})
+
+app.route('/api/v1/tours/:id')
+   .get(getTour)
+   .path(...);
+
+and do a request to '/api/v1/tours/:id' route, that generic middleware would be executed. That's because that middleware, is BEFORE
+the route handler, so it gets executed and so it is part of the middleware-stack that gets executed before the request/response cycle ends.
+
+Important: Usually we define those kind of global middlewares(like the generic middleware that we have in example above, before ALL our
+ route handlers), like for example, we put those general middlewares, at the beginning of app.js.
+
+We can define a property on the req object inside a middleware by saying: req.<property name> = ...;
+
+Remember: new Date() translates to right now and by calling .toISOString() it will convert the result of new Date() into a readable string.
+So let's pretend we have some route handler that needs the information about when exactly the request happens. So we can do that
+by adding a property to req object using middleware like what I said with new Date().
+Also don't forget to call the middleware in the stack by calling next().*/
+/* 60-14. Using 3rd-Party Middleware:
+Let's use a third party middleware function from npm called morgan in order to make our development life a bit easier. So we're gonna use a
+middleware called morgan which is a logging middleware.
+
+morgan is a 3ed party logging middleware function that allows us to see request data in the console. This package makes development easier
+but still IT IS SOME CODE that we include in our app so this package is not a development dependency and it's a regular dependency.
+
+Now as I mentioned, that logging middleware is gonna make our DEVELOPMENT life easier, but it still is code that we will actually include
+in our APP and so that's why it's not a development dependency but a simple regular dependency.
+Now let's require it in app.js after requiring express package.
+
+It's a convention that the name of the RESULTING thing(left side of equal) that require('...') is gonna expose, is usually the
+same name as the package name itself. Therefore we named the result thing of requiring 'morgan', as the same name of package, morgan.
+
+The order of things in app.js(one single file) currently is(the order is crucial!):
+1) middlewares
+2) route handlers(route handler middleware functions which get req, res, next, error just like any other middleware)
+3) routes(route definitions
+   ex: app
+          .route('/...')
+          .get()...)
+4) starting the server code
+
+Now use morgan middleware before the express.json() middleware.
+Into the morgan() function, we can pass an argument which will kind of specify how we want the logging to look like. So we can use
+some predefined strings for that and the one that we're gonna use is called 'dev'. The different options are: combined, common, dev,
+short, tiny.
+
+Calling the morgan() will return a function similar to (req, res, next) => {...} function, because this is how a middleware function
+has to look like. We can prove that, by looking at the source code of that package. Search for it on github, then go to index.js which is
+usually the entry point and in case of morgan package, it's kind of the only file that there is!!!
+The main export from index.js file of morgan package, is morgan(module.exports = morgan). So a function called morgan is exported.
+So when we require the morgan package, what will get returned is the morgan function. Because they used module.exports = morgan and that
+is the default export. So the morgan function that we called in app.use(morgan()) is the morgan function in index.js which is exported.
+morgan function actually returns another function called logger and this logger function has the very typical middleware signature which
+is (req, res, next) => {...} (like our OWN middleware functions) and in the end when it's ready, it calls next().
+So it's just a very regular middleware function just like the ones that we write.
+
+After using this middleware if client send a request to server, we get http method, the url, the status code, the time it took to
+send back the response and also the size of response in bytes. You can also save these logs to a file.
+If you used 'tiny' option of morgan(), that log would look different. It's actually quite similar and the differences is that it doesn't
+do that coloring of the status code in log and also it has a slightly different order.
+This is useful for development.
+
+This is how we use third-party middleware from npm.
+
+On express website and on it's resources/middleware you see a bunch of middleware that express recommends and actually express recommends
+those, because many of those used to be built-in in express 3, but were then taken out of express. For example body-parser is one of them,
+but actually in version 4.14 or 4.16, it was added BACK and so that's why we were able to use express.json() , in order to parse the data
+from the body. Before that, we actually would HAVE TO use the body-parse from NPM(yeah, you needed to install it separately, because
+it wasn't the part of express itself, but now you don't need to, because it's built-into express) and use that one to parse the data from the body.
+But again, they just recently added it back to reduce the confusion a bit for beginners.
+
+
+61-15. Implementing the Users Routes:
+Let's implement some routes for the user's resource. Our api will have a couple of different resources. Like tours and users resources.
+For users resources, so that, for example, we can create user accounts and have different user roles and all of the things that come with
+users.
+This users resource will be very similar to the tours resource. So let's define:
+app.route('/api/v1/users')
+   .get(...)
+   ...
+So the structure we're following is similar to the one with tours.
+Important: So when we do GET or POST on the route without the id(a route that hasn't an id in it - like: /api/v1/tours), it means that we
+ either want to get all the users, so basically all the objects that are part of one resources(in case of GET) and if we use POST, then
+ we want to create a new resource on a server. If you have :id in route and do a GET request that has a :id in it, it means that we want
+ to get one resource(in case of the user resource, one user).
+
+For naming the route function handler of a GET request which has an :id in it, there are different kind of standards there.
+So in case of user resource, you could call the handler of /:api/v1/users/:id , getUser() , getOneUser() . But the tutor prefers to
+call it getUser() .
+
+This pattern is always gonna be the same.
+
+After defining /api/v1/users route and it's handlers(for it's GET and POST and ...), now define /api/v1/users/:id .
+
+Important: When defining routes like in app.route() , you always need to start with a slash.
+
+Now let's define the route handler functions BEFORE the place we're using them(because in strict mode, you need to define the function
+you're gonna use, first and then you can use it).
+
+When you create a new resource, create a separate folder for it inside the same collection in postman.
+
+Handlers are also called controllers(route handler functions).*/
+/* 62-16. Creating and Mounting Multiple Routers:
+Let's create multiple routers and use a process called mounting. The ultimate goal currently is to separate all the code that we have
+in app.js , into multiple files. What I want, is to have one file that only contains all of those routes for one resource, so one file for
+all of the routes of tours, one file for all of routes of users.
+Also a file which contains the handlers only for the users and then also one file that will contain all the handlers(controllers) for the
+tours. We're gonna do that in next lecture, but in order to be able to do that, we actually need to now create one SEPARATE ROUTER FOR
+EACH OF OUR RESOURCES.
+
 When you have multiple routers, you must use a process called mounting.
-Right now, all of our routes (for example '/api/v1/tours'), they are all kind of on the same router and that router is app object.
-If we want to separate our routes into different files (one file for users routes and one file...), we must create one router for
-each of the resources.
-For creating new router, we say: express.Router() and save it to a variable and that variable becomes the router. Now we can use this
-variable instead of app.route() .... . Because remember: app was our earlier router:
+
+Right now, we can say that all our routes(currently we have 4 routes), they're all kind of on the same router and that router is that app object.
+But if we want to separate our routes into different files (one file for tours routes(one resource) and one file for users routes(another
+resource)), then the best thing to do, is to create one router for each of the resources.
+For creating new router, we say:
+const <resourceName>Router = express.Router() ,so we save it to a variable and that variable becomes the router.
+With that, we create a new router and save it into a variable. Now we can use this variable instead of app.route() .
+So now instead of:
+app.router('url').get().post()...
+
+we have:
+<resourceName>Router.router().get()... .
+
+Now how do we connect that new router(like tourRouter) with our application?
+We will use it as middleware and that is because, that new modular tourRouter, is actually a real middleware.
+So the result of calling express.router() is a middleware. So we can say:
+app.use('/api/v1/tours', tourRouter);
+Note that I didn't specify the route for .use() and just pass it an empty string, we will specify that later. As second arg, we pass in the
+tourRouter to use it on our application.
+Now where do we want to use the tourRouter?
+We specify that place by specifying the first arg which is the route that we want to use the tourRouter.
+So again, that tourRouter is a real middleware and we want to use that middleware for that specific route which we specified it as the first
+arg of app.use() and just like this, we created a sub application
+Learn: If you want to use a middleware ONLY on a specific route, for the first arg of app.use() , pass the route you want to use that middleware
+ and as the second arg, the middleware itself.
+
+Important: So by using this app.use() and specifying the route in first arg, we can specify WHERE we want to add this middleware to
+ our app (middleware stack).
+So we want to use the tourRouter middleware for a specific route that is specified in first arg of app.use().
+Learn: So if you specify a route (URL like thing!) in first arg of app.use(), the middleware that is specified in second arg would be
+ used in that exact URL and not anywhere else. So with this, we created a sub application. Now we must change the url in .route() methods
+ relative or based on url we used in first arg of middleware.
+ So if you has the /api/v1/tours in the first arg of .use() of a router, you need to remove that part from the specified url of route handler
+ functions. For example, change the url for handling /api/v1/tours/:id to /:id .
+Now why we must change those urls?
+Because the '/api/v1/tours' is already in the parent route of our mini application. So we just specify the additional or continuation
+of the url in .route() methods. In other words, it's because that tourRouter middleware, only runs on that specified route(first arg of .use())
+anyway and so once we are in the router, then we ALREADY ARE AT THAT ROUTE and so that first route now become the root of that specified
+route of .use() (so the root of that small mini-application).
+
+Because remember: app was our earlier router:
 EX) app
      .route('/api/v1/tours')
      .get(getAllTours)
      .post(createTour);
 
-Now every route that we put in tourRoutes.js file is relative to '/api/v1/tours' URL. Because this URL is the base URL for any route in
+Now every route that we pu t in tourRoutes.js file is relative to '/api/v1/tours' URL. Because this URL is the base URL for any route in
 tourRoutes.js file.
 Important: The whole router in tourRoutes.js is mounted on '/api/v1/tours' route. So all of the routes in that file are related to
- '/api/v1/tours' URL. Because they are mounted on this URL. */
+ '/api/v1/tours' URL. Because they are mounted on this URL.
+
+In other words, we removed the url that is on the app.use() (when we create routers), because that part of url is ALREADY in our kind of
+parent route(app.use(<'parent route'>), resourceRouter)
+
+So actually when we create a router system like what we have for tours, we actually say that we kind of created a small sub-application for
+each of those resources.
+
+Let's say that we have an incoming request now for /api/v1/tours/:id . So the request goes into the middleware stack and when it hits that
+app.use('/api/v1/tours/', tourRouter); it will match that route(first arg) and therefore our tourRouter middleware function will run.
+Remember: Our tourRouter is that sub-application that we created, which in turn, has it's own routes(which are relative to the route
+we specified in app.use() of that sub-application) and if the request was for /:id, then, it will inside our mini app hit that /:id route and
+it will run one of the handlers of that .route('/:id') , depending on the method that was used for the request.
+
+In other words:
+Now when a request goes into the middleware stack and after that if it's url hits '/api/v1/tours' url, the tourRouter middleware function
+will run. So the tourRouter is a sub application which has it's own routes and if the request was for / , the http methods for '/api/v1/tours'
+would run and if the request was for /:id the http methods for '/api/v1/tours/:id' would run. So '/:id' in sub application means:
+'<entire route>/:id'
+
+Now let's do the same for users resource. So let's create another router for that resource, called userRouter and then replace app.route(...)
+with userRouter.route().... .
+
+So mounting a new router on a route is called mounting router. So when you for example add tourRouter for /api/v1/tours (so when you
+do this: app.use('/api/v1/tours', tourRouter)) you are mounting.
+Remember: First you have to create the router variable and THEN use app.use() to use that router to create sub applications. So we can not use
+routers before we declare them.
+
+So we mount new routers for routes.
+
+Important: You could place app.use() middlewares after defining the routes. So after codes like tourRouter.route()... or userRouter..... ,
+ you could place app.use(...) . But YOU MUST PLACE app.use() codes AFTER DEFINING THE ROUTER VARIABLES. Because you must initialize the router
+ variable before using it. So let's place app.use('<route>', resourceRouter); AFTER defining the routes of that min-app.
+ So we can not use the routers, before actually declare them.
+
+So now when a request hit that app.use('/api/v1/users', userRouter); , it will run the userRouter, because that route(first arg of app.use()),
+is matched and then it enters the userRouter and again
+
+Remember: userRouter.route('/') is the root in our sub-application.
+
+Then change the routes for user resource, RELATIVE to it's parent route(app.use('<parent route>', ...)) .
+It's better so separate routers into different files. So we should cut
+tourRouter
+    .route('/')
+    .get(getAllUsers)
+    .post(createUser);
+and any other router and take it to it's separate file. Also we take the route handler functions and take them to those separate router files too.
+But we will also create a separate file for each resource route handlers functions too.
+For example : app.use('/api/v1/tours', tourRouter) means: mounting the routers (like tourRouter) on different routes(like '/api/v1/tours').
+Learn: Each router is kind of mini sub-application for each resource.
+
+Now let's separate different routers into different files.*/
+
+/* 63-17. A Better File Structure:
+ */
 
 /* node.js or express apps can run in different environments and the most important ones are development environment and the
 production environment. So depending on environment, we might use different db for example, or we might turn login on or off,
@@ -1080,7 +1320,7 @@ For example we can use aggregation pipeline in order to calculate averages or mi
 *  schema and in our model file.
 *  */
 
-/* NDB (node debugger): Is a npm package.So npm i ndb --global (you should install it as a global package). But if you want to
+/* NDB (node debugger): Is a npm package. So npm i ndb --global (you should install it as a global package). But if you want to
 * install it locally, you can install it as a dev dependency.
 * After installation add a new script in package.json and that script would be sth like: "ndb <entry point file>" and this is gonna work
 * no matter if you installed ndb locally or globally. Now you can run this script instead of nodemon, because ndb will start the server
@@ -1235,18 +1475,18 @@ We need to handle these errors in order to prepare our application for these cas
 * add some stuff to getTour handler function. It would be: if(!tour) {...}
 * */
 /* Important: We created appError class in order to create the errors with that custom class. Which that class has some properties
-*   which are very custom like isOperational property. So we created this class because for example isOperational property doesn't
-*   exist in Error built-in class. So this class is some kind of error constructor for us that we can produce our own errors with the
-*   help pf that class.
-*   But we created an anonymous function in catchAsync file to actually have a common catch error place for all of our handler functions
-*   instead of writing one catch block for each handler function, we simply create a function that do this catching error responsibility
-*   which it's job is first execute the route handler function then catch the error(if there is an error!) and then send that error
-*   to our global error handler middleware by calling next(err) .
-*   Remember: These route handler functions would called based on the route that the user requested.
-*
-* Remember: You MUST give each of the route handlers that are giving them to catchAsync function, next arg. Because it's true that
-* maybe we don't use next arg inside the function itself but in catchAsync function we definitly need to call next(err) if there's an
-* error, so we must pass next to all of the route handler functions. */
+    which are very custom like isOperational property. So we created this class because for example isOperational property doesn't
+    exist in Error built-in class. So this class is some kind of error constructor for us that we can produce our own errors with the
+    help of that class.
+    But we created an anonymous function in catchAsync file to actually have a common catch error place for all of our handler functions
+    instead of writing one catch block for each handler function, we simply create a function that do this catching error responsibility
+    which it's job is first execute the route handler function then catch the error(if there is an error!) and then send that error
+    to our global error handler middleware by calling next(err) .
+    Remember: These route handler functions would called based on the route that the user requested.
+
+Remember: You MUST give each of the route handlers that are giving them to catchAsync function, next arg. Because it's true that
+maybe we don't use next arg inside the function itself but in catchAsync function we definitly need to call next(err) if there's an
+error, so we must pass next to all of the route handler functions. */
 /* We need to send different error messages for development and production environments. The idea is that in production we want to
 * leak as little information about our errors to the client as possible. So in production, we only want to send like a nice human-friendly
 * message so that the user knows what's wrong. But on the other hand, when we're in development, we want to get as much information
