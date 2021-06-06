@@ -3,7 +3,7 @@
 const AppError = require('./../utils/appError');
 
 /* In this file, we just gonna export this function. Because other functions would be like helper functions and we won't export
-* them */
+them.*/
 
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({

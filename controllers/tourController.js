@@ -9,24 +9,8 @@ const AppError = require("../utils/appError");
 method.
 const appFileName = __dirname.replace(/\\/g, '/');
 const tours = JSON.parse(fs.readFileSync(`${appFileName}/../dev-data/data/tour-simple.json`)); */
-/* We create this function which is a param middleware, but for calling or using this middleware, we must call it in router.param() .
-* So we export this middleware and use it in tourRouter.js . Why use it in tourRouter.js?
-* Learn: Because for calling this special middleware, we need the router variable and that variable is in the routes file.So we need
-*  to export it.
-* We create this checkID middleware outside of route handler middlewares, so with this, the route handlers are only concerned about
-* getting, deleting and ... a tour. So for this task, we create a middleware before the route handler function.
-*
-* The return statement here is very important.
-    *  because if we didn't have this return here, express would send the response back but because we didn't specify anything
-    * to avoid to continue (return statement), it would still continue running the code in this function. So then it will call next()
-    * so it would move on to the next middleware and then would send another response to the client. So we would get and error.
-    * The error would be that we're not allowed to send headers after the response had already been sent.
-    * So after sending the response, the function must return (finish), so it would never call next().
-*
-* We no longer need this function, because from now on, we're gonna work with ids that are coming from mongodb and mongo itself
-* will give us error if we use an invalid id.
-*
-* const fs = require('fs');
+/*
+const fs = require('fs');
 exports.checkID = (req, res, next, val) => {
     console.log(`Tour id is : ${val}`);
 

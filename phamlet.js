@@ -1065,6 +1065,222 @@ Learn: Each router is kind of mini sub-application for each resource.
 Now let's separate different routers into different files.*/
 
 /* 63-17. A Better File Structure:
+Remember that we wanted to separate our routers into different files and that's the first step. So create a new folder called routes and
+then in there, we will have one folder for tour routes called tourRoutes.js and then userRoutes.js and this is gonna be the first time that
+we will really work with different modules and actually use them in a meaningful way. Now copy and paste the tourRouter = express.router() and
+the tourRouter.router()... s into tourRouter.js . Also there(tourRouter.js), we need to import the express module.
+
+Now it's kind of a convention that name the result of express.Router() , simply router and not tourRouter(yes in the past, where we had
+everything in one file, we had to name it based on the resource name, but now because everything are gonna be in separate files, we name it
+router). Then export that router variable and then import it into our main application(app.js).
+Important: So when we only have one thing to export, we use module.exports = <the thing we want to export>;
+
+Now import the tourRouter and userRouter in app.js :
+const tourRouter = require('.../tourRoutes'); WITHOUT the .js extension.
+
+Now you might be wondering why I called the userRouter(so route and not routeS) but then the file we're importing is called
+userRoutes(with s - plural), well, that's because that folder is called routes(plural) and so in there we have the tourRoutes and userRoutes.
+But what we actually export from those files, is simply the router. But I believe it makes more sense to actually call that folder, routes and
+so that's why we have that small difference between routes and router.
+
+By separating routers into different files like tourRoutes.js and ... , now each of those files is one small sub application.
+So one tour application and one user application and then we put everything together in our global app.js file by
+importing the routers (like userRouter and ...) and then mounting those routers on different routes.
+When you have sth like: app.use('route', <router(result of express.Router())>); , this is where we mount our router.
+
+So we created different routers for each of different resources, to have a nice separation of concern between the resources. So basically creating
+one small application for each of them and then putting everything together in one main app.js file.
+
+Important: That app.js file is usually mainly used for middleware declarations. So we have all our middlewares that we want to apply to ALL
+ of the routes and then also we have some middlewares that will apply for some specific routes only, in that main file.
+For example, for the '/api/v1/tours' we want to apply the tourRouter middleware, therefore we wrote: app.use('route', <router>);
+Learn: So tourRouter and ... are routers and also are middlewares and because of they're middleware, we can use app.use() in order to mount
+ them.
+
+After that we must cut the route handler functions from routes files and take them to controllers folder.
+So let's create a new folder which is called controllers. Actually we're been calling them, route handlers and so it would make
+sense to create a folder called handlers and not controllers. BUT later, we will start using a software architecture called
+the model-view-controller and in that architecture (in MVC architecure), the route handler functions are called controllers.
+So we put them in controller folder and in name of their file, we include the word 'controller'. So that's why we're gonna call that
+folder 'controllers' and also the files in there would have the word 'controller' in them. So create tourController.js and ... .
+
+Don't forget to add that snippet which is: const tours = JSON.parse(fs.readFileAsync(...));
+
+Learn: In MVC structure, we start by receiving a request in app.js file, and then this request depending on the it's requested route
+ (the resource that it wants), enters one of our routers and then depending on the requested route(url), the router will execute
+ one of the controllers and that's where finally the response gets sent and finishing the request-response cycle.
+
+Now we want to export all of those functions from that module(tourController and userController). How?
+In this case, we don't have only one export, so we're not gonna use module.export = <the thing we want to export> , but instead,
+we will put all of those functions(things we want to export), on the exports object.
+So replace const keywords of those functions, with `exports.` . Then in tourRoutes, import them by saying:
+const tourController = require('path to the tourController file');
+
+Now remember that when we export data from a file by using the exports object, then when we import everything of that exported object into
+one object, then all of the data that was on exports is now gonna be on the variable which is the result of requiring the external file(the
+external files means the file that has the exports.<...> things.).
+So in tourRouter.js , we will have tourController.getAllTours() instead of getAllTours() and ... . So in tourRoutes.js , the tourController
+object is the equivalent of the exports that we have in tourController.js .
+
+We could have also used destructuring, so these 2 lines are equal(IF the return statement of that require() is an object(so it means it
+must exported MULTIPLE stuff)):
+first approach: const tourController = require('...');
+second approach: const {getAllTours, ...} = require('...');
+
+Important: Inside {} , we specify the EXACT NAMES that we have in that required(imported) file.
+and with destructuring, we can use those names DIRECTLY in our code, without having to write tourController.<the imported thing> .
+But there's no problem of having it like the first approach. Because it makes it nicely visible that all of those imported functions
+actually come from that tourController module(the imported file) - remember that the tourController is the name that we chose for that
+imported module.
+
+Important: Recap: The flow goes like this:
+ We start receving the request in the app.js file. It will then depending on the route, enter one of the routers, so let's say the
+ tourRouter and then depending, again, on that route and of the request, it will then execute one of those controllers in tourController file
+ and that's where then finally, the response gets sent to consumer and finishing the request/response cycle.
+So we now have 3 files, instead of having everything just in one file. But that's still not the end of the story, because I'm adding
+one more step here. So what we're gonna do is to create a server.js file too and why we're doing that?
+
+We create this file, because it's a good practice to have everything that is related to express, in one file (app.js) and then
+everything that is related to the server in another main file(server.js).
+So server.js will be our starting file where everything starts and it's there where we listen to our server.
+So cut:
+const port = ...;
+app.listen(...);
+and move it to server.js .
+Now for using app in server.js we need to import it and to import it, we ned to first export it. So in app.js we use module.exports = app;
+
+So now we have everything that is the application configuration in one standalone file.
+Important: Later on, we will have other stuff in server.js , which those codes are not related to express, but still related to our application.
+ Stuff like database configurations, or some error handling stuff, or environemnt variables, all of that stuff will live in server.js which is
+ kind of our entry point.
+
+When you have an OWN module, we need to use ./ to say that we're in the current folder.
+
+Now we do no longer run nodemon app.js but instead nodemon server.js . So let's create an npm script for that. So create:
+"start": "nodemon server.js" in package.json and you can use npm start to run it.
+
+Currently even without having nodemon installed as our dev dependency, the npm start script which uses nodemon, works, because we have
+nodemon installed globally. For install a package globally, use --global when installing the package. */
+/* 64-18. Param Middleware:
+Let's create a special type of middleware called param middleware.
+Important: The param middleware only runs for certain parameters in URL. So basically when we have a certain parameter in our
+ URL. For example :id.
+So we can write a middleware that only runs when this :id parameter is present in the URL.
+
+For writing a param middleware, we use the router variable(result of express.Router()) and then use the param method on that variable.
+The first arg of param() is the parameter that we want to search for it in URL(so basically the parameter for which that middleware is gonna
+run - without the colon, so just the name) and in the second arg, we specify our actual middleware function.
+In param middleware and in it's second arg, we have access to FOURTH argument which is after next() argument and that one is the value
+of parameter in question and we usually call this argument, val.
+Learn: So in middleware the val parameter holds the value of the parameter in URL that we are looking for.
+So we usually call that val. So the val parameter, is the one that will actually hold the the value of the specified parameter(the first arg
+of that middleware function), in below example, the id parameter.
+EX) router.param('id', (req, res, next, val) => {});
+
+Also don't forget to call next() , because otherwise the request/response cycle will get stuck in that middleware function and it's not
+gonna be able to move on to the next middleware in the stack.
+
+Remember: This middleware will run if we have the id parameter in the requested URL.
+If the route for tours doesn't have id parameter, this middleware would be ignored and the request would go to the next middleware in
+middleware stack.
+
+That param middleware function, will only run for that specified router(mini sub-application). So if you write a param middleware for
+the router which is for tours resource, that param middleware will never run for users resource. So it will run ONLY for that
+specified router(local mini application) which that router itself is for ONE resource.
+Important: Again, each router is kind of a mini sub-application, one for each resource.
+So if you write a param middleware on for example tourRouter, then of course, it is only part of the middleware stack if we are actually
+inside of that sub-application, so if we are in tours resource.
+
+Let's suppose we have an incoming request on /tours/:id. So that request will go through the app.js file, with our current middleware stack,
+the order of middlewares that it will visit is:
+- app.use(morgan('dev'));
+- app.use(express.json());
+- app.use((req, res, next) => {
+  console.log('...');
+  next();
+});
+- app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  next();
+});
+- app.use('/api/v1/tours', tourRouter); (sine this is actually the route that the request has, it will then get into tourRouter middleware,
+                                         so it goes to tourRouter.js)
+-router.param('id', ...);  if the request had not an id param in it, this middleware will be ignored and it would move on to the next middleware
+                           in the stack
+-router.route('/:id')...
+
+Now let's actually use that param middleware, Currently, in all of the handler functions that use the id param, in tourController.js,
+we check if the id is valid. So all those 3 functions, have that similar code where they check if the id(which is a param in url) is valid and
+if not, they send back that invalid id response.
+So what we can do there, is to use the concept of param middleware and perform that check in an outside middleware that it's gonna run, BEFORE
+the request even hits those handler functions. Important: So put router.param() , before the handler functions in tourRoutes.js .
+So on TOP of all of those handler functions in tourController, create a new middleware function which is a param middleware and it's called,
+checkId and of course we also need to export that and because it's a param middleware, the fourth argument, will be the value of the
+parameter.
+Important: Again, don't forget to call next() at the end of the middleware. Also the `return` statement in this middleware is crucial.
+ Because if we didn't have that return there, well, then express would send that response back, but it would still continue running the
+ code in this function and so after sending the response, it would then STILL hit that next() function and it would move on to the
+ next middleware and would then send another response to the client. But that is not allowed.
+We actually ran into this error before, where it told us that we were not allowed to send headers after the response had already been sent and
+so that's the kind of error that we would run into, if we didn't that return statement inside this param middleware.
+So again, that return statement makes sure that after sending this response(which is done by using res.status().json()), the function will
+return, so that it will finish and if will never call that next() there. Now use tourRouter.checkId instead of that inline function
+in tourRoutes for second arg of router.param();
+Now you can remove the repeated code of checking the id param, in those handler functions of tourController.js .
+
+So now this param middleware is now part of our pipeline(middleware stack).
+
+EX) exports.checkID = (req, res, next, val) => {
+    console.log(`Tour id is : ${val}`);
+
+    if (req.params.id * 1 > tours[tours.length - 1].id) {
+        return res.status(404).json({
+            status: 'fail',
+            message: 'Invalid id'
+        });
+    }
+
+Now you might argue that we might simply create a simple function which could also check of the id and then call that function, inside of
+each of those tour route handler functions, but that would go against the philosophy of express, where in philosophy of express, we should
+always work with the middleware stack, so with that pipeline as much as we can and so those handler functions, they do not have to
+worry at all about validation(so we shouldn't include ANY code related to validation or sth else, INSIDE those handler functions, we should
+put those validation or ... code, in a separate middleware, before that handler function(why not after? because after those handler functions,
+the request/response cycle would be ended!!!)). Each of those handler functions has only one purpose, which is to do what they say. For example,
+in case of getTour() route handler function, it should ONLY gets the tour, createTour() only should create the tour and nothing else. So they
+shouldn't do check, of they shouldn't have to worry about any of that.
+
+Also if we would now add another controller for tours there which also depending on the id, well then that would AUTOMATICALLY also check if the
+id is invalid, without us having to do any additional steps(calling that checkId() function which is a bad practice).
+
+We MUST call next(), because otherwise the request-response cycle will get stuck in this middleware function (so it won't get to
+controllers or route handler functions).
+    next();
+};
+
+Remember: We chain multiple handlers, because we want to take all the logic that is not really conecerned with the route handler,
+outside of that handler. So that route handler function is only concerned really with the work that is supposed to do.
+
+router.param('id', tourController.checkID);
+
+We create this function which is a param middleware, but for calling or using this middleware, we must call it in router.param() .
+So we export this middleware and use it in tourRouter.js . Why use it in tourRouter.js?
+Learn: Because for calling this special middleware, we need the router variable and that variable is in the routes file.So we need
+ to export it.
+We create this checkID middleware outside of route handler middlewares, so with this, the route handlers are only concerned about
+getting, deleting and ... a tour. So for this task, we create a middleware before the route handler function.
+
+The return statement here is very important.
+because if we didn't have this return here, express would send the response back but because we didn't specify anything
+to avoid to continue (return statement), it would still continue running the code in this function. So then it will call next()
+so it would move on to the next middleware and then would send another response to the client. So we would get and error.
+The error would be that we're not allowed to send headers after the response had already been sent.
+So after sending the response, the function must return (finish), so it would never call next().
+
+We no longer need this function, because from now on, we're gonna work with ids that are coming from mongodb and mongo itself
+will give us error if we use an invalid id.
+
+*/
+/* 65-19. Chaining Multiple Middleware Functions:
  */
 
 /* node.js or express apps can run in different environments and the most important ones are development environment and the

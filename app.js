@@ -127,9 +127,9 @@ app.all("*", (req, res, next) => {
   * middleware.So let's create the err object, which that global error handler middleware needs.
 
   In Error() constructor we can pass a string and that string will be the err message property.
-  *
-  * Also after commenting out the res.status(404).json({}) code, I commented out these lines of code, because they are using the
-  * built-in Error class but we have created our custom error class.
+
+  Also after commenting out the res.status(404).json({}) code, I commented out these lines of code, because they are using the
+  built-in Error class but we have created our custom error class.
 
   const err = new Error(`Can't find ${req.originalUrl} on this server.`);
   err.status = 'fail';
@@ -138,20 +138,20 @@ app.all("*", (req, res, next) => {
   Now we are going to create the appError object from AppError class, right in the parentheses of next() .*/
 
   /* Now we must use next() in a special way. Because we need to pass that err object into next() .
-  * Learn: If the next function receives an argument, no matter what is that argument, express will automatically know
-  *  that there was an error. So it will assume that whatever we pass into next() is gonna be an error and this concept
-  *  applies to every next function in every single middleware ANYWHERE in our app.
-  *  SO AGAIN: Whenever we pass anything into next() , express will assume that it is an error in the parentheses of next() and
-  *  it will SKIP ALL OTHER MIDDLEWARES in the middleware stack and send that arg(error) which is in next(), to our global
-  *  error handling middleware.
-  *
-  * So now if the user tries to find a route that is not defined in our app, this middleware will catch that error and it will
-  * create err object with it's properties and send it to our global error handler middleware.
-  *
-  * Now we can go ahead and implement this snippet in this middleware which we create the err object and then call next(err) in all
-  * of our middlewares that have OLD error handling mechanism and renew them with this new approach. But it's better to create
-  * our own Error class. So with that, we don't have to write all of that new snippet code for errors like in this middleware.
-  * Now I created appError.js .*/
+   * Learn: If the next function receives an argument, no matter what is that argument, express will automatically know
+   *  that there was an error. So it will assume that whatever we pass into next() is gonna be an error and this concept
+   *  applies to every next function in every single middleware ANYWHERE in our app.
+   *  SO AGAIN: Whenever we pass anything into next() , express will assume that it is an error in the parentheses of next() and
+   *  it will SKIP ALL OTHER MIDDLEWARES in the middleware stack and send that arg(error) which is in next(), to our global
+   *  error handling middleware.
+   *
+   * So now if the user tries to find a route that is not defined in our app, this middleware will catch that error and it will
+   * create err object with it's properties and send it to our global error handler middleware.
+   *
+   * Now we can go ahead and implement this snippet in this middleware which we create the err object and then call next(err) in all
+   * of our middlewares that have OLD error handling mechanism and renew them with this new approach. But it's better to create
+   * our own Error class. So with that, we don't have to write all of that new snippet code for errors like in this middleware.
+   * Now I created appError.js .*/
   next(new AppError(`Can't find ${req.originalUrl} on this server.`, 404));
 });
 
@@ -209,38 +209,14 @@ app.use(globalErrorHandler);
 variable), is actually a real middleware. So we can create a app.use() for these routers and say we want to add this middleware to
 our application or middleware stack on '/api/v1/tours' route.
 
-
-
-
-By separating routers into different files like tourRoutes.js and ... , now each of those files is one small sub application.For
- example: We have one tour application and one user application and then we put everything together in our global app.js file. By
- importing the routers (like userRouter and ...) and then mounting those routers on different routes.
- So we created different routers for each different resources to have a nice separation of concern between the resources.So basically create
- one small application for each of them and then put everything together in one main app.js file.
- Important: This app.js file is mainly used for middleware declarations. So we have all our middlewares that we want to apply to ALL
-*  of the routes and then also we have some middlewares that will apply for some specific routes only, in this main file.
-* Learn: So tourRouter and ... are routers and also are middlewares and because of they're middlewares, we can use app.use() in order to mount
-*  them.
-* After that we must cut the route handler functions and take them to controllers folder.
-* Important: In MVC architecure, the route handler functions are called controllers.So we put them in controller files.
-Learn: In MVC structure, we start by receiving a request in app.js file, and then this request depending on the it's requested route
- (the resource that it wants), enters one of our routers and then depending on the requested route(url), the router will execute
- one of the controllers and that's where finally the response gets sent and finishing the request-response cycle.
-
-   After all of this we have to create server.js file too. We create this file, because it's a good practice to have everything
-   that is related to express, in one file (app.js) and then everything is related to the server in another main file.
-   So server.js will be our starting file where everything starts and it's there we listen to our server.
-   For using app variable in server.js file, first we must export this variable from app.js and then import it in that file.
-   The database configuration, error handling, environment variables would be in server.js . So server.js would be kind of
-   entry point.
-   So we must change the nodemon app.js to nodemon server.js . This way, we no longer have to really know which is the file that
-   I actually want to run. So all we have to write is npm start . Otherwise, we have to think, hmmm is it app.js or server.js? To
-   start nodemon. So instead of saying nodemon app.js or ... we just say npm start and this way we don't have to worry about the
-   name of the file. Also this script works, even without having nodemon installed as our dev dependency IF WE INSTALLED nodemon GLOBALLY.
-   If nodemon is not installed globally, just install it globally, or you can instead install it as dev dependency.
-   Learn: npm run start or npm start is both equavilant IF THE NAME OF THE SCRIPT IN package.json is a simple name. So if the name
-    of the script is start:dev or ... it's not simple and we MUST say: npm run start:dev . But if it was a simple name we could
-    ignore the run keyword.
+So we must change the nodemon app.js to nodemon server.js . This way, we no longer have to really know which is the file that
+I actually want to run. So all we have to write is npm start . Otherwise, we have to think, hmmm is it app.js or server.js? To
+start nodemon. So instead of saying nodemon app.js or ... we just say npm start and this way we don't have to worry about the
+name of the file. Also this script works, even without having nodemon installed as our dev dependency IF WE INSTALLED nodemon GLOBALLY.
+If nodemon is not installed globally, just install it globally, or you can instead install it as dev dependency.
+Learn: npm run start or npm start is both equavilant IF THE NAME OF THE SCRIPT IN package.json is a simple name. So if the name
+ of the script is start:dev or ... it's not simple and we MUST say: npm run start:dev . But if it was a simple name we could
+ ignore the run keyword.
 
 
 app.use('/api/v1/tours', tourRouter);
