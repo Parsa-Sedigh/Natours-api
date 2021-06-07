@@ -9,8 +9,7 @@ const AppError = require("../utils/appError");
 method.
 const appFileName = __dirname.replace(/\\/g, '/');
 const tours = JSON.parse(fs.readFileSync(`${appFileName}/../dev-data/data/tour-simple.json`)); */
-/*
-const fs = require('fs');
+/* const fs = require('fs');
 exports.checkID = (req, res, next, val) => {
     console.log(`Tour id is : ${val}`);
 
@@ -24,11 +23,9 @@ exports.checkID = (req, res, next, val) => {
         controllers or route handler functions).
         next();
     }
-};
-*/
+}; */
 /* exports.checkBody = (req, res, next) => {
-     400 status code stands for bad request. So basically an invalid request from the client, which is in this case trying to
-     create a new tour without a name and without a price property.
+
      But why we created this middleware? Instead we could check the body in createTour route handler function!!
      No, it would be a bad practice.The createTour route handler must have it's own functionality and not anything else.
      So we can create a middleware (which has next arg) to check the body data, instead of createTour and if the body was alright,

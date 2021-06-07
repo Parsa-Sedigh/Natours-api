@@ -124,7 +124,7 @@ app.all("*", (req, res, next) => {
    });
 
   I commented out the above lines, because now we handle all of the operational errors of application, with one global error handler
-  * middleware.So let's create the err object, which that global error handler middleware needs.
+  middleware.So let's create the err object, which that global error handler middleware needs.
 
   In Error() constructor we can pass a string and that string will be the err message property.
 

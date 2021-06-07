@@ -1281,7 +1281,41 @@ will give us error if we use an invalid id.
 
 */
 /* 65-19. Chaining Multiple Middleware Functions:
- */
+Let's see how to chain multiple middleware functions for the same route. Up until this point, whenever we wanted to define
+a middleware, we only ever passed one middleware function. For example, for handling a POST request, we only passed in that
+tourController.createTour(), so we only passed in createTour() handler.
+EX) router.route(...)
+          .post(routerController.createTour)
+and so that's the only function that is gonna be called, whenever we get a POST request. But let's now say, that we want to actually
+run MULTIPLE MIDDLEWARE functions. Now you might ask: "Why would we want to do that?"
+Well, we might for example, run a middleware, before that createTour, to actually check the data that is coming in the body. So a bit similar
+to that checkId param middleware which we're using it, in order to check if the id is actually valid and doing that OUTSIDE of the actual
+route handlers, so that they are only concerned with getting, updating or deleting a tour and so here, in this specific example with POST,
+we might want to do the same thing. So as I said, we might want to check if request.body actually contains the data that we want for
+the tour(if the body contains the name property for(so) the tour name and the price property) and if not, we want to send back a
+400(stands for bad request) status code. 400 status code stands for bad request. So basically an invalid request from the client,
+which is in this case trying to create a new tour without a name and without a price property. At the end, add this new middleware function
+to POST handler stack of tourRouter . For adding that to POST middleware stack of POST of tourRouter, you simply add that function before
+the createTour handler which will ultimately create the tour.(before, because we want to run it before!).
+So we want to create our OWN middleware function.
+
+So this way, when we have a POST request for that route('/'), it will then run that new middleware function first and only then, the creatTour() .
+So that's how we chain two different middlewares. 
+
+Now let's write that new middleware, after the checkId middleware which is in tourController.js .
+When we have 400 status code, the status would be 'fail'. In checkBody middleware, we say that the name and price properties need to be
+there at the same time. But if everything is correct, well, then we want to move on to the next middleware by calling next() and the
+next middleware will be createTour() .
+
+201 status code is for "created".
+
+With multiple middlewares for the same route, we can check if a certain user is logged in or if he has the privileges, so the access rights to
+even write a new tour or really all kinds of stuff that we want to happen before the tour is actually created and once again we do that,
+because we want to take all the logic that is not really concerned with creating the new resource, outside of that handler. So that that handler,
+is only concerned really with the work that it is supposed to do.
+
+66-20. Serving Static Files:
+*/
 
 /* node.js or express apps can run in different environments and the most important ones are development environment and the
 production environment. So depending on environment, we might use different db for example, or we might turn login on or off,
@@ -1505,11 +1539,11 @@ Mongoose uses native JS data types.*/
 * Fat models/thin controllers: We should offload as much logic as possible into the models, to keep the controllers simple and lean.
 * So the controllers are mostly for managing app's requests and responses.   */
 /* Mongoose is just a layer of abstraction on top of mongodb, which is why mongoose doesn't use the exact same functions, but
-still it gives us access to similar ones or some exact function names, like deleteMany() which has a same name in native 
+still it gives us access to similar ones or some exact function names, like deleteMany() which has a same name in native
 mongodb. */
 /* In mongoose there are 2 ways of writing db queries.The first one is to just use the filter object and the
 second one is to use some mongoose special methods. So we chain special mongoose methods to build the query.
-EX for first way: 
+EX for first way:
 const tours = await Tour.find({
   duration: req.query.duration,
 
@@ -1830,7 +1864,7 @@ request, obviously!), but if you want to say: I don't want to execute further co
 *
 * Learn: The ValidationError s are created by mongoose. Just like the CastErrors, so they look similar.
 *
-* So: 
+* So:
 * Now if you found another error that you want to mark it as operational error, you just need to use an if statement to catch those
 * types of errors and in that if statement, you need to call a special function which make those kind of errors operational by
 * returning a new instance of AppError() class and also create a message for those kind of errors and pass it to new AppError() and
