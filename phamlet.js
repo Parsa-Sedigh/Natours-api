@@ -1278,7 +1278,6 @@ So after sending the response, the function must return (finish), so it would ne
 
 We no longer need this function, because from now on, we're gonna work with ids that are coming from mongodb and mongo itself
 will give us error if we use an invalid id.
-
 */
 /* 65-19. Chaining Multiple Middleware Functions:
 Let's see how to chain multiple middleware functions for the same route. Up until this point, whenever we wanted to define
@@ -1315,24 +1314,113 @@ because we want to take all the logic that is not really concerned with creating
 is only concerned really with the work that it is supposed to do.
 
 66-20. Serving Static Files:
-*/
+Let's look at how to serve static files with express. Now what do I actually mean with static files?
+Static file are the files that are sitting in our file system that we currently can't access
+them using our routes. For example we have that overview.html file in our public folder, but right now there's no way that we can
+access that using a browser. So, currently can't access overview.html (or anything is inside public folder) via browser.
+Let me show this concept to you and for this, let's use the browser this time.
 
-/* node.js or express apps can run in different environments and the most important ones are development environment and the
-production environment. So depending on environment, we might use different db for example, or we might turn login on or off,
-or debugging on or off or ... . So these factors are based on environment variables.By default, express sets the env to development.
-Everything that is not related to express, we're gonna do it outside of app.js .So app.js is for configuring express application.
-So env variables are outside of express.
-Learn: You can see the environment that you are currently in by using: console.log(app.get('env')); so app.get('env') will give us
- the environment variable. This variable is set by express, but node itself has a lot of environments. So 'env' is set by express,
-but node itself sets a lot of env variables and they're located at: process.env
-and those env variables in node, are coming from process core module and there's no need to require process module. Sp it is
-available everywhere.
-Now in express, many packages depend on a special variable called NODE_ENV.It's a variable that's a kind of a convention, which
-should define whether we're in development or in production mode.However, express doesn't define this variable, so we have to do that
-manually.So we can use terminal. If you want to set an environment variable for a process like nodemon server.js , we need to
-prepend that env variable to the process command. So we say: NODE_ENV=development nodemon server.js . Now if you start that process,
-the NODE_ENV is set to development. Now you can create and set even more environment variables. So we can say:
-NODE_ENV=development X=24 nodemon server.js .
+If you write: 127.0.0.1:3000/api/v1/tours (this is a GET request, because we're using browser), you get all the tours in unformatted way,
+but let's say we actually want to access that overview.html file.
+
+So if you write http://localhost:3000/public/overview.html , it won't work, because we didn't define any route for this url.So
+we don't have any route handler that is associated to this route and so if we actually want to access sth from our file system, we
+need to use a built-in express middleware.
+Remember static files are like html files or images or css or js or ...
+So if we want to access something from our file system, we need to use a built-in express middleware.
+
+Now in this section, we're actually just talking about an API, so we don't actually need to serve static files like images or html, but
+since this section is an introduction to express in general, the tutor also wanted to quickly show this content to us anyway.
+
+So let's write this after app.use(express.json()); :
+app.use(express.static());
+
+In parentheses of static() function we pass in the directory that from which, we want to serve static files.
+After using this middleware, if you visit that prior URL with a little difference in browser you can visit that static file.
+So now the URL would be: http://localhost:3000/overview.html and it's not going to work with http://localhost:3000/public/overview.html url,
+so without the /public part.
+So without defining any routes and route handler functions we can visit these static files.
+
+Now why is that? Why don't we need the /public folder in url?
+Because when we open up a url, that it (the browser) can't find in any of our routes, it will then look in that public folder that we
+defined and it kind of sets that folder to the root.So let's pretend that the root(localhost:3000) is now our public folder and then the overview.html
+is in there, so that's why we have access to it. So when we have: http://localhost:3000/overview.html , the localhost:3000 is kinda our
+public folder, therefore the overview.html is right there, so that's why we can access overview.html with this url in browser. For seeing
+an image in img folder, we can do that by using: localhost:3000/img/pin.png
+But if you write http://localhost:3000/img/ , it will throw an error: cannot GET /img/. Because this is not a file,
+this looks like a regular route and so express tries to find a route handler function for this URL, but it can't. Because you
+didn't define any ROUTE HANDLER for this url. So really it just works for static files, in which case, it will, again,
+not go into any route, but simply serve that file that we specified from the public folder or in the folder that we specified in ()
+of that express.static() .
+So when a user looks for a static file, express won't go into a new route, but simply serve that file that we specified in the
+folder in middleware.
+So with this middleware, we served static files from a folder and not from a route.
+
+Currently, the images in 127.0.0.1:3000/overview.html are broken and that's because that html is not supposed to be server like that. We're
+just using it now, so that we get some visual feedback.
+Currently, you can see we had a bunch of logs for all the requests that were done, for all of the assets. So as I said right in the beginning,
+for each peiece that is part of the website, our server actually gets a SEPARATE request and currently, you see that most of them get
+that 404 status in logs. So that's why the links are broken on the web page currently. It's simply because express can't find them in
+that folder(so when we type 127.0.0.1/3000/overview.html , yes, we request for overview.html , but that page also has some images and other
+stuff. So the server gets separate reqs for those images and other stuff like css and other static files that were used in that overview.html which
+those stuff are in /public folder, as well. But because their links are broken, the logs for them would be 404).
+
+So for each piece that is part of the website, our server actually gets a separate req and you see currently, most of them causes the log to
+be 404, so that's why the links for images are then broken on the web page we receive on browser. Simply because express cannot find them in
+this folder.
+So what tutor wanted to show us is how we can serve static files from a folder and not from a route.*/
+/* 67-21. Environment Variables:
+What are env variables? How we set them and how we use them?
+This is not exactly about express, it really has to do with nodejs development in general.
+node.js or express apps can run in different environments and the most crucial ones are the development environment and the
+production environment. That's because, depending on environment, we might use different databases for example, or we might turn login on or off,
+or we might turn debugging on or off or really all kinds of different settings that might change, depending on the development(environment!!!,
+the tutor was incorrect!) that we're in.
+
+So again, the most crucial ones are the development and the production environment. But there are other environments that bigger
+teams might use. So these type of settings(factors) that I just mentioned, like different dbs or login turned or on or off, are based on
+environment variables.
+Now, By default, express sets the environment, to development, which makes sense because that's what we're doing when we start a new project.
+
+Important: Everything that is not related to express, we're gonna do it outside of app.js . So app.js is only for configuring our (express)
+ application(everything that has to do with express app). But the env variables are outside the scope of express.
+So we should write them outside of app.js and in server.js .
+
+Learn: You can see the environment that you are currently in by using: console.log(app.get('env')); so app.get('env') will get us
+ the 'env' environment variable.
+ In summary, environment variables are global variables that are used to define the envrionement, in which a node app is running.
+The 'env' environment variable is set by express, but node itself actually sets a lot of environments. But 'env' variable
+is set by EXPRESS and not nodejs, but node itself actually ALSO sets a lot of environment variables and node uses most of them, internally and they're
+located at: process.env and those env variables in node, are coming from process core module and there's no need to require process module.
+So it is available everywhere.
+Learn: Environment variables of nodejs itself, can be get, by using process.env which will give us a bunch of different variables and node
+ uses them, internally.
+For example, it has the current working directory in PWD environment variable. Other examples: Your home folder is at HOME env variable and
+your login name is at LOGNAME, the script that we use to start this process is specified at npm_lifecycle_script which currently is set to:
+'nodemon server.js' . In other words, the value of npm_lifecycle_script is 'nodemon server.js' , so really, a bunch of stuff that
+for some reason, nodejs internally needs. Those variables come from the process core module and we're set at the moment that the process
+started and as you see, we didn't even have to require the process module. It is simply available everywhere AUTOMATICALLY.
+
+Now in express, many packages depend on a special variable called NODE_ENV.It's a variable that's kind of a convention, which
+should define whether we're in development or in production mode.However, express doesn't really define this variable and so we have to do that
+manually and there are multiple ways in which we can do it, but let's start with the easiest one which is to use the terminal.
+For running nodemon server.js , we did it using npm start, so npm start, in turn, in this case, stands for: nodemon server.js . So
+we use nodemon server.js to start the process, but if you want to set an environment variable for this process like nodemon server.js ,
+we need to prepend that variable(NODE_ENV) to the process command.
+So we say: NODE_ENV=development nodemon server.js . Now if you start that process, the NODE_ENV is set to development, so we would have:
+NODE_ENV: 'development', (which we observed this, by logging the process.env to the console). Therefore, that variable(NODE_ENV)
+that we have in console.log(process.env), actually comes from that command and we can actually define even more if we wanted.
+Now you can create and set even more environment variables. So we can say:
+NODE_ENV=development X=23 nodemon server.js , then start the process and now by logging the process.env , you now see the `X` environment
+variable is set to 23 string(so currently one of the results of logging of process.env is: X: '23').
+
+So again, many packages on npm that we use for express development, actually depend on this environment variable and so when our project
+is ready and we are gonna deploy it, we then should change the NODE_ENV variable to production and we will do that of course once we
+deploy the project by the end of the course.
+
+So we set NODE_ENV and X as env variables, but we can do a lot more and that's because we usually use env variables like configuration settings
+for our application.
+
 Important: In windows for setting an env variable you must say: SET <name of env variable-like NODE_ENV> = <value>
  So for doing the prior task we can say: SET X=24 and hit enter, and then say: npm run start or nodemon server.js .Because
  windows can't run multiple commands at the same time without specifying anything. (In windows if you want to run multiple commands
@@ -1340,220 +1428,149 @@ Important: In windows for setting an env variable you must say: SET <name of env
 Learn: Many packages on npm that we use for express development, depend on this env variable and so when our project is ready and
  we're gonna deploy it, we should change the NODE_ENV env variable to deployment.
 So environment variables are global variables that are used to define environment in which node app is running.
-So whenever our app needs some configuration for stuff that might change based on the environment that the app is running on it,
-we use env variables.For example, we might use different databases for development and for testing, so we could define one env
-variable for each and then activate the right database according to the env. Also we can set sensitive data like passwords and ...
-using env variables. Now it's not really good to define all of these variables in the command line, so we can create a configuration file.
-So we create config.env .
+Important: So whenever our app needs some configuration for stuff that might change based on the environment that the app is running in,
+ we use env variables.For example, we might use different databases for development and for testing, so we could define one env
+ variable for each and then activate the right database according to the env. Also we could set sensitive data like passwords and username,
+ using env variables. Now it's not really good or practical to always define all of these variables in the command, where we start the
+ application.
+In other words, it's not good to always define them when we're running commands in command line. So imagine we had like, 10 env variables
+and it would be not really practical to having to write them out ALL there, inside of that command(before the script we wanna use)
+and so instead, what we do, is we can create a configuration file.
+So create config.env and env , is really the convention for defining a file which has those env variables.
 Remember: The env variable names must be upper case (convention).
-How connect the .env file with node app? So we need to read those variables and then save them as env variable. Because right now
-that .env file is just a text file and node.js has no way of knowing these variables are in that file.
-Solution: Use dotenv package from npm and then in server.js we require that package (Why in server? Because it has nothing to do with
-express so we don't require it in app.js)
-Learn: The below code, will read the env variables that are in .env file and save them in node.js environment variables (so they would be in
- process.env).
-After this, we must use these variables in our code- like app.js file.*/
+Also install dotenv extension for vscode.
+Let's also define the port, on which our app should be running, so that's also kind of a standard variable that is usually in a .env file.
 
-/* Mongodb:
-* There is no need to define a document data schema before filling it with data. Meaning that each document can have a different number
-* and type of fields and we can also change these fields all the time.
-* Mongodb uses a data format similar to Json for data storage called BSON. Basically it looks the same to JSON, but it's typed.
-* Meaning that all values will have a data type like boolean and ... .
-* In mongo, we can multiple values for one field that are in an array.But in relational db, that's not allowed, so we can't have
-* multiple values in one field(column).
-* Also in mongodb we can have embedded documents.For example in one field, we could have an array of documents, which are like
-* child documents for their parent field and that parent field is a child to the document. For example we can embed comment documents
-* into the post document.
-* So embedded or denormalizing means including related data into a single document. (But it's not the best solution always.
-* But in relational databases, data is always normalized.So in these kind of dbs, it's not possible to embed data.So the solution is
-* to create a whole new table and in this case that table is comments and then JOIN this table to posts table by referencing to the
-* id field of comments table.)
-*
-* The maximum size of each document currently is 16MB.
-* Each document contains a unique id, which acts as a primary keyof that document.That unique id is automatically generated with the
-* object ID data type each time there's a new document.*/
-/* After installing the mongodb app, you need to create a directory which mongo will store our data into that directory.
-* So go to c drive, and there create a folder named data and in there create folder
-* called db which in this db directory, mongol will store our databases.
-* In bin directory we have mongod.exe file which is the server. So you must open this file using powershell to start the server.
-* So we say .\mongod.exe in bin directory and then the server is running.(Remember before running the server you must create those
-* folders in root of c drive.)
-* Now the server would waiting for connections on port 27017. Now we need a shell to connect to server in order to be able to
-* manipulate our databases (create database add document and ...). So open a new terminal and go to bin directory, Now you must run
-* mono.exe file.Now you are connected to the same port. Now if you run db command, you would get the test database in result.
-* So in one terminal we're running the server and in another terminal you're connected to server.
-*
-* Now what if you want to run the mongod.exe program from another directory?
-* So for example from users directory? So if in users directory you type mongod.exe, it won't work. Because windows doesn't know
-* where to look for mongod.exe file. So windows thinks this file should be in Parsa directory, but it isn't.
-* So we need to find a way to tell windows to look for this file and find it in that bin directory
-* Learn: so basically we want a way to run that file if we are not in the directory that file lives. So we must use SYSTEM VARIABLES.
-*  So go to settings and search for env and go to 'edit system environment variables'. Now you are in system properties then click on
-*  advanced tab and click on environment variables. Now look into system variables box and then on Path variable click edit,
-*  now you can see there is a couple of paths added there. So if you add a path to a program, you can run that program anywhere
-*  you want.Now add the path to bin directory of mongodb there.
-*  Basically we add the absolute path to the folder where the program lives in that folder.
-* Now after closing the old terminal and open a new one, if you run the mongod.exe server file from anywhere, it would run!
-* Now you can run mongodb commands from anywhere on your system.  */
-/* Let's create a database with mongo shell. So first you must run mongo server running in background (use mongod.exe to run server),
-* and now we can type: mongo to open up mongo shell.
-* For creating a database inside mongo shell, type: use <the name of database>
-* Learn:Also you can use use command to go to an existing database (if that database already exists), but if that database
-*  doesn't exist it would create the database with given name after use command.
-* Now after creating database, it would create the database and then switch to it.Now you must create documents, but first you need
-* to specify the collection before insert a document and also remember in mongo shell, db command stands for current database .
-* So for inserting, say: db.<name of collection>.
-* If the collection that you want to insert document in it, doesn't exist, it will first create it and then insert doc into it, using
-* the prior command.
-* Remember: We would have collections for each resources we have.
-* Now pass a JS object into insertOne() function and it will then converted to JSON and BSON.
-* You could use double quotes on property names, but it's optional.
-* Important: If you want to use quotes in JS object that would converted to JSON, it's better to use double quotes and not single quotes.
-*  But anyways, the single quotes will converted to double ones.
-* Learn: Mongodb will create unique _id identifiers behind the scenes, when we insert a new document.
-*
-* The show dbs commands will show all the dbs that we have.
-*
-* So if you doesn't have a collection that you are inserting documents in it, it would create the collection and then insert those
-* docs inside that collection.
-*
-* We have also the show collection command.
-* quit() for qutting mongo shell.
-* insertMany() will accept an array of multiple objects and each object is a document in the collection.For example:
-* db.tours.insertMany([{...}, {...}, {...}])
-*
-* Learn: db.<name of collection>.find() will list all of the documents in the specified collection.*/
-/* Mongodb documents are very flexible and they don't all have to have the same structure. So we can have different fields in
-* different documents. */
+Now how connect the .env file with our node app? So we need some way of reading those variables from that file and then saving them
+as env variables. Because right now, that .env file is just a text file and node.js has no way of knowing that those variables are in that file.
+For that, the standard is kind of using dotenv package from npm and then in server.js we require that package (Why in server?
+Because it has nothing to do with express so we don't require it in app.js)
+The below code, will read the env variables that are in .env file and save them in node.js environment variables (so they would be in
+process.env).
+In () of config(), we just have to pass an object, to specify the path where our configuration file is located and so what this line will now
+do, is to read our variables(env variables) from the file and save them into nodejs env variables.
+dotenv.config({ path: "./config.env" });
 
-/* Remember: For running mongo shell just type: mongo */
-/* Queriying (reading) documents:
-* EX) db.tours.find({ price: {$gt: 2000}, rating: {$lte: 3.2} })
-* This example is an and query.
-*
-* EX) db.tours.find({ $or: [  {price: {$lt: 100}}, {rating: {$lte: 3.5}}  ] })
-* So we start by $or mongo operator and this operator accepts an array of conditions, which each condition is an object.
-* So in this example we have 2 conditions that for each document we search it's price and each rating and if ONE OF THEM (because
-* we have $or operator) WAS TRUE based on condition, the doc will added to results.
-*
-* Besides the filter object (the object that has $or and our conditions ...), we can pass in the projection object. In projection object
-* we specify what fields we want in the results output. So in that object we specify the name of the field that we want to be in the
-* results and set it to 1 and other fields won't be in the results.
-*
-*  */
-/* Updating docs: How updateMany() works? First we have to select which docs we want to update and second we pass in the data that should
-* be updated.So the first arg is basically a filter object.
-* In the second arg, we pass in an object and in that object we specify the $set operator which has a value of an object and in that
-* object we specify the fields that we want to update and their values.
-* Remember: If you were using updateOne() and the filter object result would return more than one doc, then ONLY THE FIRST DOC WOULD
-* BE UPDATED, because you are using updateOne() instead of updateMany()
-* If you update a field that doesn't currently exist in the documents that you want update, it will create those fields.
-* So let's see an example that we're creating a new field with updateMany():
-* EX) db.tours.updateMany({ $or: [ {price: {$gte: 500}}, {rating: {$gte: 4.6}} ] }, { $set: {premium: true} })
-*
-* With .updateOne() or .updateMany() we usually only update parts of a document or documents, but we can also completely replace
-* the content of documents with .replaceOne() and .replaceMany() which like 2 prior functions, for first arg, gets the filter object (
-* search query) and for second arg, gets the new data which is in an object for $set. */
-/* Deleting documents:
-* If you want to delete all of the docs inside a collection:
-* db.<name of collection>.deleteMany({}) . Learn: Because an empty object is a condition that akk of the documents always match.
-*
-* Also for deleting, for first arg it takes the filter object... */
-/* Important: In order to create a connection to local mongo database, you have to running mongo server running in the background.
-*   You can start server by: mongod.exe */
-/* Learn: project or projection means: In the result docs, just show some of the fields that I specified . */
-/* In mongodb atlas, a cluster is an instance of our database. After building the cluster, we must connect our remote hosted database
-* to our compass app in computer and also the mongo shell.
-* After creating the admin of this project in mongodb atlas, you must save the password of that user (admin) in your .config file.
-* So a db password is a great example for .config env file.
-* After that we must choose a connection method and we will start by choosing mongodb compass application.
-* So as you saw, the compass application is for interacting with atlas.Now it would give you a connection string. Past it in compass.
-* Now our compass app is truelly connected to the online cluster and atlas.
-*
-* Now we must allow access from everywhere to our project's cluster. Because remember: In the beginning, we whitelisted our IP address
-* in order to grant access for our current computer to current to the project's cluster. But if you switch to other computers during
-* development or ... you might need to whitelist the IP of those computers too. But here we can whitelist any other IP in the world and
-* allow access from anywhere.But you still need your username and password. So go to Network Access> ... . Now the IP whitelist should be
-* 0.0.0.0/0 .
-*
-* Now let's connect our mongo shell to this cluster. So go to clusters>connect>connect with mongo shell. Now open up the mongo server in
-* terminal and in another terminal, past the string from atlas. Now if your run: dbs, it will show the databases in that specified db
-* in connection string. Now in that tab of terminal you are connected to that database in atlas.
-* Now both compass and mongo shell are connected to our remote hosted database (atlas).
-*  */
-/* For connecting the atlas cluster to our app, we must store the connection string in the .config file.
-* Remember: When your're using local database instead of atlas, never close mongod.exe terminal. */
+Now if you run: npm start and that should then log all our environment variables to the console, because in our code we
+have: console.log(process.env) and now you can see that we have:
+NODE_ENV='development'
+PORT='8000'
+USERNAME='...' (we called this USERNAME and not USER, because we ALREADY have an env variable in process.env which is called USER)
+PASSWORD='...'
+So that dotenv.config(...); has load all the env variables from that file and add them to process.env variables.
 
-/* Now we need to install the mongodb driver. It's a software that allows our node.js code to access and interact with a mongodb
-* database and there are a couple of mongodb drivers, but we use mongoose which adds a couple of features to native mongodb drier.
-* In other words, we use mongoose to connect our code to mongodb.
-* So write: npm i mongoose
-* Mongoose is an object data modeling (ODM) library for mongodb and nodejs which provides a high level of abstraction. So
-* mongoose is a layer of abstraction over mongodb driver.
-* Object data modeling library is just a way for us to write JS code that will then interact with a database.So we could just use
-* a regular mongodb driver to access our DB, but we use mongoose because it's gives us a lot more functionality out of the box.
-* So mongoose allows us faster and simpler development of our apps.
-* So mongoose allows for rapid and simple development of mongodb database interactions.
-*
-* Some features that mongoose gives us: It gives us schemas to model our data and relationship, easy data validation, a simple
-* query API, middleware and ...
-* In mongoose a schema is where we model our data. So where we describe the structure of data, default values and validation.
-* Then we take that schema and create a model out of it and a model is basically a wrapper around the schema, which allows us to
-* actually interface with the database in order to create, read ... docs.
-* Schema -> Model
-* */
-/* Important: We configure mongodb in the server.js file not app.js . First require mongoose there. */
-/* Mongoose is all about models and a model is like a blueprint that we use to create documents and also to query, update and delete
-Learn: these docs. So basically to perform each of CRUD operations, we need a mongoose model and in order to create a model, we need a
- schema. So we create mongoose model out of schema and also we use schema to describe our data, to set default values, to validate
- the data.
-Mongoose uses native JS data types.*/
+Remember: After changing the env variables you need to re-run the server again(by saving the server.js or ...),
 
-/* Remember: For using async await, you must create a function. Right? Because async is usually used in declaring function itself. */
-/* Model layer  is concerned about the data and the business logic. In controller layer, handles application's request, interact with
-* models and send back responses to the client (app logic). View layer is necessary if we have graphical interface or if we're building a
-* server-side rendered website (persentation logic). */
-/* Everything starts with a request. Then that request will hit one of our routers. Because we have one router for each resource.
-* Now the goal of the router is to delegate the request to the correct handler function and that function will be in one of the the
-* controllers and we know that there will be one controller for each resource. Then depending on the request, the controller might need
-* to interact with one of the models and again there is one model file for each resource. After getting data from the model,
-* the controller might then be ready to send back a response to the client.
-* But in case that we want to render the website there is one step involved. In this case after getting the data from model,
-* then the controller will select one of the view templates and inject the data from model to it and that rendered website will send
-* back as response.
-* In view layer, usually there's one view template for each page.
-*
-* MVC separates business logic from application logic.
-* application logic is code that is only concerned about the application's implementation and not the underlying business problem
-* that we're trying to solve with the application, like showing and selling tours.
-* So application logic is the logic that makes the app actually work. For example, a big part of application logic in express is
-* all about managing requests and responses. So application logic is more about TECHNICAL STUFF. Also if we have views in our app,
-* the application logic serves as a bridge between model and view layers. So we never mix business logic with presentation logic.
-*
-* About business logic, it's the code that actually solves the business problem we set to solve.For example, our goal is to show
-* tours to customers and then sell them and the code that is directly related to the business rules or to how the business works
-* and the business needs is business logic. EX) Creating new tours, checking if user's password is correct, validating user's input
-* data, ensuring only users that bought the tour can review it and ...
-* So we must do our best to keep application logic code in controllers and business logic code in models.
-*
-* Fat models/thin controllers: We should offload as much logic as possible into the models, to keep the controllers simple and lean.
-* So the controllers are mostly for managing app's requests and responses.   */
-/* Mongoose is just a layer of abstraction on top of mongodb, which is why mongoose doesn't use the exact same functions, but
-still it gives us access to similar ones or some exact function names, like deleteMany() which has a same name in native
-mongodb. */
-/* In mongoose there are 2 ways of writing db queries.The first one is to just use the filter object and the
-second one is to use some mongoose special methods. So we chain special mongoose methods to build the query.
-EX for first way:
-const tours = await Tour.find({
-  duration: req.query.duration,
+in the end of that logged data we can see our OWN env variables and their values.
+After this, we must use these variables in our code, like app.js file. In app.js , I only want to run that logger middleware, so to
+only define it, when we are actually in development. So that the logging, does not happen when the app is in production. So we need to
+check for process.env.NODE_ENV and if it was in 'development', only then we want to use morgan.
+Our logger middleware is define where we have: app.use(morgan('dev'));
 
-});
+You might ask why we actually have access to the NODE_ENV env variable when we didn't really define them in the file that we're using
+them(like app.js), but in server.js(because we wrote the dotenv.config() in server.js and not other files) . So how it is possible?
+The answer to that, is that the reading of the variables from .env file which that reading operation happens at server.js and save
+it to the node process, only needs to HAPPEN ONCE. After that those variables that were read, are in the process and process is available
+and it's the same, no matter which file we're currently in. So we're always in the same process(process variable is the same in all files) and
+the env variables are on the process and so the process that is running, so where our application is running, is always the same and so that
+process.env.NODE_ENV is available to us in every single file in the project. So this is how we use that NODE_ENV variable.
+Important: The next if statement and other codes like that are codes that run based on the environment of our application
+if (process.env.NODE_ENV === 'sth') {}.
 
-EX for second way:
-const tours = await Tour.find().where();
+Now in server.js we say that the port should either be the one coming from the environment variables or that 3000 .
+
+If you get an error that says:
+Error: listen EADDRINSUSE:: <port number>, when running a node app, it means we're already using that 8000 in some other apps that's
+running somewhere on our computer and so we need to change that in config.env (of course, IF you have that number which is in use,
+in config.env). For example, the tutor got this error and he changes the PORT env variable in config.env from 8000 to 3000 .
+
+We can get rid of that console.log(process.env.NODE_ENV);
+
+Currently, we get undefined for value of process.env.NODE_ENV in app.js . Because we require() the './app' file BEFORE our env variables
+are read from the config file and so the operation of reading the env variables from config.env file, needs to be BEFORE requiring ./app file.
+So only AFTER reading the dotenv variables, we want to run the code that is in app.js file.
+So again, we couldn't read the process variable, inside app.js because it(the env variables) wasn't yet configured. Now if you send a request,
+the logger middleware would be run, because we're in development env.
+
+Important: First we have to read or configure the .env file in our project and THEN use any file that is using process.env.<name of env
+ variable>. So because the server is first running server.js , first we have to configure dotenv file and then require any other
+ files that are using process.env.<...> .
+So the dotenv.config(); line should happen before requiring any other file in server.js .
+So the problem was we actually require the app file(const app = require('./app')); BEFORE our env variables are read from the config file. But it
+needs to be the other way around. So dotenv.config() should be BEFORE requiring that app file and other require() lines of our project files. So
+only after that dotenv.config() , we wanna run the code of app.js file and other files.
+
+Let's add a new start script to our package.json . Right now we have: "start": "nodemon server.js" , but we also want to add another one for
+production, just so that we can test what happens in that situation. So create: start:prod script and also let's rename the old "start" one,
+to: start:dev .
+In production, we simply want to set the NODE_ENV variable to production. So for actual command of that npm script we say:
+NODE_ENV=production and then the rest of the npm script. So our npm start:prod script which is ONLY for testing purposes is now:
+NODE_ENV=production nodemon server.js . (it's only for test, because we only want to have a npm script which sets NODE_ENV to production
+to see the behavior of app in that environment.).
+Now if you console.log(process.env.NODE_ENV); , you will get production as logged message and if we send a request, we will then NOT
+execute the logger middleware.
+
+So this is how we run different code, depending whether we're in development or in production.
+
+Now let's go back to our development script of course! */
+/* 68-22. Setting up ESLint + Prettier in VS Code:
+es-lint is a program that constantly scans our code and find potential coding errors or bad coding practices that it thinks are wrong and
+it's very configurable.
+We can also use es-lint for code formatting, but we will continue using prettier for that. So we will setup this entire thing, so that
+prettier is still the main code formatter but based on some es-lint rules that we will define and so all that es-lint will do for us,
+is to highlight the errors.
+
+First install es-lint and prettier extention for vscode. Now we need to install a bunch of dev deps.
+We need to also install eslint and prettier as npm packages as well(as dev dep):
+
+So the recipe for prettier and eslint is:
+npm i eslint prettier eslint-config-prettier eslint-plugin-prettier eslint-config-airbnb
+eslint-plugin-node eslint-plugin-import eslint-plugin-jsx-a11y eslint-plugin-react --save-dev
+
+eslint-config-prettier will disable formatting for eslint, because remember, we want prettier to format our code and not eslint.
+So with this package, prettier will take care of formatting and not eslint.
+
+eslint-plugin-prettier package will allow eslint to show formatting errors as we type using prettier.
+
+For future projects, all you have to do is to go to package.json of this project and copy the deps and install them in your next project. Why?
+Because all of these packages must installed locally on the project and not globally. So it would not work if we tried to do this globally.
+
+Now we need some js style guides that we can follow, airbnb style guide for javascript is very good and actually, there is an eslint configuration
+that we can use for that, which is on npm and it's called eslint-config-airbnb .
+
+eslint-plugin-node will add a couple of specific eslint rules only for nodejs. (For finding some errors that we might be doing when writing node.js
+code.)
+Now finally, we need 3 other eslint plugins which are only neccessary in order to make the airbnb style guide actually work.
+So that style guide kind of depends on these 3:
+eslint-plugin-import eslint-plugin-jsx-a11y eslint-plugin-react
+So even though we're not writing react code here, we still need this one, because the airbnb style guide depends on it.
+We need to save all of these packages as dev dependency.
+
+Next we need config files for both prettier and eslint(we already created the one for prettier and the one for eslint is already in the
+starter files).
+
+In .eslintrc.json and in extends property, we say we want to use the airbnb style guide and also prettier and also the
+node plugin("plugin:node/recommended").
+
+es-lint is all about coding rules and there are many many rules that es-lint tries to enforce on us, but we can actually change the ones
+that we want to use, one by one and we can wether turn them off completely or just showing a warning instead of showing an error.
+For example one rule is that es-lint does not want us to use console.log() s in our code which is specified by the "no-console" property and
+so each time by default, it will give us an error when we use console.log() , but instead of showing me an error, we configure it, so that it
+only shows me a warning. So we set the value of "no-console" property to "warn". We could also completely turn it off, by writing "off" as it's
+value.
+
+In "consistent-return", it forces us that each and every function should always return sth, but sometimes we have a function which doesn't,
+so we turned it off.
+
+For "no-unused-vars", we leave it as "error" but we ALSO created some EXCEPTIONS by specifying an object as second element of array we specified
+as value of "no-unused-vars" and we specified 4 exceptions which are the typical variables that we have in express(in handlers in express), but that
+we don't always use them. So we don't want them to be marked as errors each time that for example I have a "req" as variable name in a function,
+but I don't use it.
+
+If after specifying the rules for es-lint the errors don't show up in code, close the editor and re-opens it.
+You can see the errors in code in PROBLEMS tab of terminal in vscode.*/
 
 
-*/
 
 /* Mongodb aggregation pipeline: The idea is basically we define a pipeline, that all docs from a certain collection, go through
 that pipeline, where in that pipeline, they are processed step by step in order to transform them into aggregated results.

@@ -25,7 +25,6 @@ exports.checkID = (req, res, next, val) => {
     }
 }; */
 /* exports.checkBody = (req, res, next) => {
-
      But why we created this middleware? Instead we could check the body in createTour route handler function!!
      No, it would be a bad practice.The createTour route handler must have it's own functionality and not anything else.
      So we can create a middleware (which has next arg) to check the body data, instead of createTour and if the body was alright,

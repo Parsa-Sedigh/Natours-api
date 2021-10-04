@@ -15,14 +15,8 @@ const app = express();
 
 //1) Middlewares
 
-/*
-
-You might ask why we have access to the NODE_ENV env variable when we didn't define them in this file but in server.js . So how
-it is possible? The reading of the variables from .env file and save it to node process, only needs to HAPPEN ONCE. After that
-those variables are in the process and process is available no matter which file we're currently in.
-Important: The next if statement and other codes like that are codes that run based on the environment of our application. */
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
 }
 
 /* express.json() returns a function and that function always would added to middleware stack.
@@ -30,24 +24,6 @@ We use express.json() middleware in order to parse the data from body on req obj
 But in the last version, we don't have to use bodyParser.json() and instead we can use express.json()   */
 app.use(express.json());
 
-/* How serve static files with express? static file are files that are sitting in our file system that we currently can't access
-them using our routes. For example we currently can't access overview.html (or anything is inside public folder) via browser.
-So if you write http://localhost:3000/public/overview.html , it won't work, because we didn't define any routes for this url.So
-we don't have any route handler that is associated with this route.
-Remember static files are like html files or images or ...
-So if we want to access something from our file system, we need to use a built-in express middleware.
-In parentheses of static() function we pass in the directory that in that directory we want to serve static files.
-After using this middleware, if you visit that prior URL with a little difference in browser you can visit that static file.
-So now the URL would be: http://localhost:3000/overview.html
-So without defining any routes and route handler functions we can visit these static files.
-But why we don't need public folder in URL? Because when we open up a url, that the browser can't find in any of routes, it will
-then look in the public folder that we defined and it kind of sets that folder to the root.So let's pretend that the root is now
-our public folder and overview is in there, so that's why we have access to it.
-But if you write http://localhost:3000/img/ , it will throw an error. Because this is not a file and this looks like a regular route
-so express tries to find a route handler function for this URL, but it can't. Because we didn't define any ROUTE HANDLER for this url.
-So when a user looks for a static file, express wont't go into a new route, but simply serve that file that we specified in the
-folder in middleware.
-So with this middleware, we served static files from a folder and not from a route.  */
 app.use(express.static(`${__dirname}/public`));
 
 /* We could name any of these args anything else, but the order of them matter.
@@ -174,18 +150,18 @@ status property on err object, therefore it was came from other places so we nee
 Remember: When we have 400 status code, it means 'fail' so status would be 'fail' and if we have status code of 500 it means 'error'.
 For example when we have 404, we have 'fail' status.
 
-* After creating this global error handler middleware, we must comment out the error snippets from our previous middlewares.
-*
-* Now we want to export this handler in this middleware. Because in future we're gonna build a couple of different functions
-* for handling different types of errors. So we want all of those functions to all of them be in a same file and we can say
-* that all of these functions are handlers or we also call them controllers in context of mvc. So let's create an errorController
-* file.
-* You could say: Hey we create controllers just for our resources and not anything else! But, at the end of the day, the functions
-* that would be in errorController file, they are kinda for CONTROLLING our errors.
-*
-* So now let's comment our these codes because we exported it and it's in another file.
-*
-* app.use((err, req, res, next) => {
+After creating this global error handler middleware, we must comment out the error snippets from our previous middlewares.
+
+Now we want to export this handler in this middleware. Because in future we're gonna build a couple of different functions
+for handling different types of errors. So we want all of those functions to all of them be in a same file and we can say
+that all of these functions are handlers or we also call them controllers in context of mvc. So let's create an errorController
+file.
+You could say: Hey we create controllers just for our resources and not anything else! But, at the end of the day, the functions
+that would be in errorController file, they are kinda for CONTROLLING our errors.
+
+So now let's comment our these codes because we exported it and it's in another file.
+
+app.use((err, req, res, next) => {
     console.log(err.stack);
 
     err.statusCode = err.statusCode || 500;

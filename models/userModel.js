@@ -7,17 +7,17 @@ const bcrypt = require('bcryptjs');
     In validator function, we return true or false and if the return value if false, it means we would get a validation error and in this case
     we want to say if current passwordConfirm is equal to the current document's password(this.password) , then return true.
 
- Learn: For accessing current document which we are currently validating it in the validator custom function, you can use this keyword.
-  Also for accessing the field value that the validator is inside that validator, you can pass an arg to the custom validator function and
-  receive it. For example, in this case we are passing el to the custom validator which this custom validator is in passwordConfirm
-  field. So el would be the value of passwordConfirm in the current document.
-  Also instead of el, you could use this.passwordConfirm . All of this would work ONLY IN SAVE!!!
-  So because of this reason, whenever we want to update a user(or any other resource), we have to use save as well.
-  For example, let's say users updated the his password with just a regular update method. Then in that case, that custom validator in
-  passwordConfirm property  would no longer work.
-  So again, the validators work when we create a new doc like .create() method, or on save. So for example:
-  const newUser = User.create(req.body); for this one, the validators gonna work. Also we can use User.save() in order to update
-  a user doc.*/
+Learn: For accessing current document which we are currently validating it in the validator custom function, you can use this keyword.
+ Also for accessing the field value that the validator is inside that validator, you can pass an arg to the custom validator function and
+ receive it. For example, in this case we are passing el to the custom validator which this custom validator is in passwordConfirm
+ field. So el would be the value of passwordConfirm in the current document.
+ Also instead of el, you could use this.passwordConfirm . All of this would work ONLY IN SAVE!!!
+ So because of this reason, whenever we want to update a user(or any other resource), we have to use save as well.
+ For example, let's say users updated the his password with just a regular update method. Then in that case, that custom validator in
+ passwordConfirm property  would no longer work.
+ So again, the validators work when we create a new doc like .create() method, or on save. So for example:
+ const newUser = User.create(req.body); for this one, the validators gonna work. Also we can use User.save() in order to update
+ a user doc.*/
 
 const userSchema = new mongoose.Schema({
   name: {
