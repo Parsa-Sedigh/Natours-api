@@ -110,13 +110,30 @@ Now we can use the created model in order to create docs.
 
 With new mongoose.schema() , we specify a schema for our data. So basically describing it and also doing some validation and ... .
 
-TODO: tomorrow:
 87-5. Creating Documents and Testing the Model:
+Let's create a doc out of a Tour model(or function constructor). So this is kind of using JS function constructors or JS classes(if
+you're using ES6), basically to create new objects out of a class and so that's exactly the same syntax, so we use the new keyword and then
+the class name in ES6. Now here it's NOT exactly the same, but this analogy is helpful to understand how this works.
+So this testTour doc that we created, is an instance of the Tour model and so now it has a couple of methods on it that we can use in order to
+interact with the DB. Like <created doc>.save() to save it to tours collection in the DB. So we can call the save() method on our document instance.
+Now that .save() returns a promise that we can then consume.
+
+For using async await(in order to consume promises), we need to create another function.
+
 In .then() of testTour.save() we have access to the document that just saved in the database. So basically we have access to the
-resolved value of the promise that .save() returns.
+resolved value of the promise that .save() returns, is the final document as it is in the DB.
 
 Important: Mongoose by default produces a collection name by passing the model name (first arg of .model()) to the
  utils.toCollectionName() method.
+ Also note that mongoose automatically creates a new collection as soon as we create the first document using that model.
+So if we hadn't a tours collection which is related to Tour model and then we insert a document in that collection(which that collection
+doesn't exist yet), that collection with it's new doc, will be created automatically in DB and the name of that collection is automatically
+guessed based on the name of MODEl. So if the model name is `Tour`, the collection name would be `tours`(it makes it plural automatically).
+
+By saving the file, this code will be executed right away, because it won't be executed by some reqs which is the case that normally happens
+in APIs, instead, it will be executed right away. So each time we save our files, that code in our model which is saving a doc to db, is
+executed again(of course we would remove this code later). But because we made the `name` field unique, we get an error that says the
+name is a duplicate key.
 
 Mongoose add __v field automatically to each doc that was inserted.
 If the collection doesn't exist when we create the first doc for that collection, mongoose will automatically create it for us.
@@ -125,47 +142,524 @@ With this code, we inserted a doc into database VIA OUR CODE.
 The explanation of code is: When you created the model, you must create an instance of model and that instance would be the new
 document and then pass in Tour() the fields and values for that document and then you must save that document.Like below:
 
-onst testTour = new Tour({
+const testTour = new Tour({
   name: 'The Park Camper',
   price: 497,
   rating: 4.4
-;
+});
 
-At last, we must export our model from this variable to use it (querying, deleting and ... docs) in the related controller file.
+Remember: For using async await, you must create a function. Right? Because async is usually used in declaring function itself.
 
-About ratings, later we would have another resource called reviews, where users will be able to write reviews about tours and
-ratings. So it's completely different resource, so it would have a different model. BUT still we want to have a summary of
+88-6. Intro to Back-End Architecture MVC, Types of Logic, and More:
+MVC architecture in our express app:
+Model -> Buisenss logic
+controller -> application logic
+view -> presentation logic
+
+In this architecture, the model layer is concerned with everything about application's data and the business logic.
+
+In controller layer and the function of the controllers is to handle the application's request, interact with models and send back responses
+to the client and all that is called the application logic.
+
+View layer is necessary if we have a graphical interface in our app or in other words, if we're building a server-side rendered website.
+In this case, the view layer consists basically of the templates used to generate the view(so the website that we're gonna send back to the
+client.)(presentation logic).
+For now, we're just building an API though, so we're not really concerned about views just yet.
+
+We could add more layers of abstraction here.
+Now let's take a look at MVC in the context of our app and the request/response cycle.
+So as always, it all starts with a request. Then that request will hit one of our routers(because we have MULTIPLE routers).
+In other words, because we have one router for each resource.
+Now the goal of the router is to delegate the request to the correct handler function and that function will be in one of the the
+controllers and we know that there will be one controller for each resource. Then depending on the incoming request, the controller might need
+to interact with one of the models and again there is one model file for each resource. After getting data from the model,
+the controller might then be ready to send back a response to the client, for example, containing that data.
+But in case that we want to render our website there is one step involved. In this case after getting the data from model,
+the controller will then select one of the view templates and inject the data from model to it and that rendered website will then be sent
+back as the response.
+In the view layer, in an express app, there's usually one view template for each page. Like a tour overview page, a tour detail page or a login
+page.
+
+- Application vs business logic:
+Let's go into a bit more detail on model and controller.
+
+One of the big goals of MVC, is to separate business logic from application logic. But what are these types of logic?
+
+Application logic is code that is only concerned about the application's implementation and not the underlying business problem
+that we're actually trying to solve with the application, like showing and selling tours, managing stock in a supermarket.
+So application logic is the logic that makes the app actually work. For example, a big part of application logic in express is
+all about managing requests and responses. So application logic is more about TECHNICAL STUFF. Also if we have views in our app,
+the application logic serves as a bridge between model and view layers. So that we never mix business logic with presentation logic.
+
+About business logic, it's all the code that actually solves the business problem that we set out to solve. For example, our goal is to show
+tours to customers and then sell them and the code that is directly related to the business rules, to how the business works
+and the business needs is business logic.
+EX) Creating new tours in the app's DB, checking if a user's password is correct when he logs in, validating user input data or ensuring that
+only users who bought a certain tour can review it and ... , so all this stuff is concerned with the BUSINESS itself and so it's part of the
+buisness logic.
+
+Keep in mind that application logic and business logic are almost impossible to completely separate and so sometimes they will overlap.
+But we must do our best to keep application logic code in controllers and business logic code in models and there is even this philosophy of
+Important: fat models/thin controllers which says: We should offload as much logic as possible into the models, to keep the controllers simple and lean.d
+ So a fat model will have as much business logic as we can offload to it and a thin controller will have as little logic as possible,
+ so that the controller is really mostly for managing the application's requests and responses.
+
+application logic                                             CONTROLLERS    <------>   MODEL   business logic
+- code that is only concerned about the application's implementation,                 - code that acatually solves the business problem we set out to solve
+  not the underlying business problem we're trying to solve(e.g. showing              - directly related to business rules, how the business works and
+  and selling tours)                                                                    business needs
+- concenred about managing reqs and responses                                         - examples:
+- about the app's more technical aspects                                                  creating new tours in the DB
+- bridge between model and view layers                                                    checking if user's password is correct
+                                                                                          validating user input data
+                                                                                          ensuring only users who bought a tour can review it
+*/
+/* 89-7. Refactoring for MVC:
+Currently we have controllers folder and routes folder, so now we need a models folder. So create that and create the tourModel.js there, then
+cut the code wrote for tourSchema and mongoose.model() that we have in server.js , to that tourModel file.
+
+All we have to do in server.js is to connect to db, but everything that is about the models will always live inside a file in models folder.
+
+At last, we must export our model from model files and that should be the ONLY thing we export from model files and so we use the default export
+for doing that with mode.exports = ... , to use it (querying, deleting and ... docs) in the related controller file.
+
+Now where do we need that exported tour model? In other words, where are we actually gonna create and delete and ... tours(docs of that exported
+model)?
+In tourController and there, we import the exported model with the same name. For example the model is named Tour amd we import it with the name,
+Tour.
+
+Now in tourController, clean the code we wrote before in order to no longer depend on the data that we had in the JSON file, because now we wanna
+work with real DB.
+
+Also we no longer need checkId() function in tourController, because from now on, we're gonna start working with the IDs that are coming from mongodb,
+because mongo itself, will give us an error if we use an invalid id, so that checkId() function was very useful for showing you how middleware actually
+works.
+So comment checkId() out.
+
+Now in tourRoutes.js , comment out the router.param('id', tourController.checkId)
+Remember: We use router.param() to define parameter middleware.
+
+Now we wanna create the controller functions or handler functions in tourController with mongoose.
+
+90-8. Another Way of Creating Documents:
+Comment out the checkBody() function, it was to validate the body, so to see if it had the name or the price property in them, but now,
+our mongoose model is gonna take care of that. Also comment it in tourRoutes.
+
+We can create a new do like:
+First approach:
+EX) const newTour = new Tour({
+      name: req.body.name,
+      price: req.body.price,
+      rating: req.body.rating
+  });
+  newTour.save().then();
+
+This code will work but there's an easier way:
+Second approach:
+EX) Tour.create({})
+
+The difference is in second approach, we call the method (save()) on new DOCUMENT, but in the next approach we call the method (create())
+DIRECTLY on MODEL itself instead of calling the method on the instance of model which is our new document. These are completely different.
+So again we had the tour document that we created from the model(by using new <model>()) and on that new document variable, we used the save() method ,
+because the document has access to save() and a lot of other methods as well.
+
+But in second approach, we call the method(create()) right on the MODEL(and not document) itself.
+
+In Tour.create(), because .create() returns a promise, in order to access the document that was created inside db, we must
+use .then() . But it's better to use async await. So we are waiting for the returned promise of .create() and save the resolved value
+of this promise to newTour variable.
+
+Remember: If eslint gives an error that says: The async functions are not supported until node 7.6.0 . The configured version range is
+'>=6.0.0' , or sth like this, this is because of node plugin that we installed. So go to package.json and in there define
+the node version that you're using. So after devDependencies, say:
+"engines": {
+  "node": ">10.0.0"
+}
+So this means in this project, we're using at least version 10.0.0 . Yes, 7.6.0 would be ENOUGH in order to make that eslint error disappear,
+but of course we specify the real version that we're actually using.
+
+But with even specifying ">7.6.0" it's enough to make this error disappear. But it's better to specify the real version of node
+that you're currently using.
+
+Learn: When the client send additional fields that aren't in the schema, those additional fields and values will ignored by
+ the schema and won't inserted into db.
+
+In this function, we're creating docs, USING MONGOOSE.
+
+Remember: With using async await, we need to test for errors by using try catch syntax.
+In catch block we have access to error object, by specifying a name for argument that stores the error object.
+Also in catch block, we need to think what the errors would be? One error would be the request didn't provide all of the
+required fields that we specify in schema and that's a validation error and that can be catched in .catch().
+Because if we try to create a doc without one of the required fields, then the promise that is returned from .create(),
+would be rejected and if we have a rejected promise, it will enter the catch block.
+Learn: Rejected promises will enter the catch block.
+Learn: 400 status code means bad request.
+
+Everything that is not in our schema, is simply ignored, so if client sends some data that aren't in the related schema, those data are ignored.
+So that is the power of schema!
+
+Mongodb gives back a huge error object in that catch block and later on we will create more meaningful errors.
+This is how we create docs using mongoose.*/
+/* 91-9. Reading Documents:
+try {
+  const tours = await Tour.find();
+  res.status(200)...
+} catch(err) {
+  res.status(404)...
+}
+
+We use the data property which is an object in the response we send to client, in order to envelope the data, like when getting tours, we envelope
+them with data property which has an object as value.
+
+In this case, there's not gonna be any validation errors that could be catched in catch() block(unlike creating docs).
+
+findById() is a shorthand or a helper function for findOne() method with a filter object. So we could also say:
+Tour.findOne({ _id: req.params.id }) So findById() is a shorthand for writing the filter object in findOne() and behind the scenes
+the findByID() will work exactly like findOne(). So:
+Tour.findOne({ _id: req.params.id }) === Tour.findById(req.params.id);
+
+92-10. Updating Documents:
+We can query for the document that we want to update and then update it, with ONLY 1 command in mongoose.
+
+In third arg of findByIdAndUpdate(), we can also pass in an object of options and in there we can set `new` property to
+true and by setting that property to true, the new updated document is the one that will be returned from that method
+rather than the original doc and since we want to send back that updated document to the client, we always want this method to
+return that updated(new) doc. We must store that returned doc into a variable by awaiting it.
+
+All of the find() , findByIdAndUpdate() , findById() , all of these, will return queries, so they are query methods.
+
+findByIdAndUpdate() is just a shorthand for findOneAndUpdate() , where we're querying for an id
+
+With setting true for runValidators option, each time that we update a certain doc, then the validators that we
+specified in the schema will run again.
+
+Learn: When we say: <sth>.prototype. ... , it means an object that was created from a <sth>. For example:
+ Tour.prototype.save() means an object created from Model class. So Mode.prototype.save() method in mongoose refers to a save() method
+ called on a DOCUMENT and NOT on a Tour Model class, which is an object from Model class.
+EX) When we have:
+const newTour = new Tour({});
+newTour.save();
+
+This newTour got ACCESS to the save() method, because save() is part of the prototype object of Tour class.
+Important: So again, when you see Model.prototype.save() , you know that the save() method is gonna be available on ALL of the INSTANCES created
+ through a Model and not the Model ITSELF, but from it's INSTANCE. So if for example you try Tour.save() , it would give you an error.
+In other words:
+Important: So in mongoose when you see Model.prototype.save() we find out that the save() method is going to be
+ available on all of the instances created through the Model class and save() it's not available on Model itself.
+ So if you try to write Tour.save() it would give an error, but if you use .save() on a document (an object) created through
+ the Tour, then it would work.
+
+Methods like findById() or update() or ... will return query objects.
+
+Instead of tour: tour we in an object we can say: tour.
+Remember: In updating a doc, if you send additional fields that curr aren't exist in database, they would be ignored.
+
+Because of runValidators: true , if we send String Instead of Numbers when updating docs, it would give us an error. Because
+it would look at the schema for data types.
+Also because for updating we're using PATCH HTTP method, the original doc wouldn't replaced by the new object that we sent in.
+But if we were using PUT request, the original object (doc) would completely replaced with the new one that is sent in and in
+that case it won't work with findByIdAndUpdate() method. Because this method updates the fields that are different in body
+and in db.
+
+For example findByIdAndUpdate() or find() or findById() , all of these, will return "query objects" and so later on when we're gonna implmenet
+stuff like sorting or filtering, we will then use this query object.
+
+If you update a field to a type other than the specified type in schema and you have set the runValidators: ture, it would throw an error.
+Because we ran the validators again.
+So when we have in req body of an update endpoint sth like: price: "some price" , mongoose can't convert this string to a number, so it throws an
+error.
+
+In PUT req, we expect to get the FULL object coming from req.body, so in this case, the original object would be COMPLETELY replaced with the
+new one that is sent in from req.
+
+findByIdAndUpdate() updates the fields that are different in the body of req.
+
+93-11. Deleting Documents:
+We didn't save the result of awaiting in await Tour.findByIdAndDelete(req.params.id); to a variable, because we don't send anything back to the client,
+so in a restful API, it is a common practice NOT to send back any data to the client, when there was a DELETE operation and 204 status is
+kind of a standard for deleting.
+Also note that in case of deleting, postman doesn't show anything as body of response.*/
+/* 94-12. Modelling the Tours:
+If a field must have a value of pre-defined possible values for example it should be either 'medium', 'easy' or 'difficult', that is a VALIDATOR.
+
+About ratings, later we would have another resource called reviews, where users will be able to write reviews about tours and give
+ratings and that's gonna be a completely different resource, so it would have a different model. BUT still we want to have a summary of
 these ratings and of these reviews which are in a different model, in this tour model. SO THIS APPROACH IS ACCEPTABLE.
 
-We didn't gave those 2 ratings fields a required validator.Because it's not the user who creates these tours who will actually
-specify the ratings values and those ratings later will be calculated from the real reviews.
+We didn't gave those 2 ratings fields(ratingsAverage and ratings(Quantity) a required validator. Because it's not the user who creates
+these tours who will actually specify the ratings values. So when we create a new tour, we will never specify the ratingsAverage neither the
+ratingsQuantity, because that will LATER ON will be calculated from the real reviews.
 
-trim schema option only works for Strings which will remove all the whitespaces in the beginning and in the end of the string.
+When we have sth like: <field>: <type> , we didn't give it any schema type options.
+We make the summary field required, because it's on the front page of our website, so basically it's on the overview.
+
+trim schema type option only works for Strings which will remove all the whitespaces in the beginning and in the end of the string.
+(So remember that I said there are different schema types (options) for different types and for string we have a schema type which is
+trim). So if for example someone sends sth like: "     This is good.     ", then all that whitespaces will get cut.
 
 The summary schema option is required because it's on the overview page and we defenitly want to show it.
 imageCover is just the name of the tour image and we will read the image from the file system. But in db we just store the name
 of the image as a reference.
 
 Learn: We could store the entire image in database as well, but it's not good. We leave the images somewhere in the file system
-and then put the name of the image itself in the db as a field.
+ and then put the name of the image itself in the db as a field.
+So the name of the image is kinda a reference of that image will be stored in the DB and that's a common practice.
 
-In images schema option, we would have multiple images, so we must save those images as an array of strings. So we must specify
+In images schema option, we would have multiple images, so we must save those images as an array of Strings. So we must specify
 an array of strings ([String]) for that field value, instead of an object of schema options.
 So in schema, [String] means a number of strings in an array.
 
+The type of field is also itself an schema type option.
+
+The createdAt field should be a timestamp that is set by the time that the user adds a new tour.
 Date is a JS built-in data type. Date.now() will give us a timestamp in milliseconds, which represents the current milliseconds.
-But in mongo, this millisecond will immediately converted to today's date, in order to makes sense.
-createdAt will automatically created.
+But in mongo, this millisecond(Date.now()) will immediately converted to today's date, in order to makes sense of that data.
+createdAt should be added automatically at time that the tour(row) is created.
 
-startDates are different dates for the same tour. But this schema option won't automatically created by mongo, but mongo will
-automatically try to parse the string that we passed in as a date into a real JS date. So in that array we could pass in an
-element like: "2021-03-21" or "2021-03-21,11:32" and then mongo will automatically parse this string to a valid date. Or we can
-input a unix timestamp like the format we have in Date.now() , So mongo will try to parse all of these date formats into a JS
-date and only if it can't, it will throw an error.
+startDates are different dates at which a tour starts. For example we can have a tour starting in December this year and then in Feburary the next
+year and ... , so different dates for the same tour , are simply different, let's say, instances! of the tour starting on different dates.
+But that startDates won't automatically created by mongo and mongo will then automatically try to parse the string that we passed in as
+a date into a real JS date. So in that array we could pass in an element like: "2021-03-21" or we can also specify the TIME
+of that date "2021-03-21,11:32" and then mongo will automatically parse this string to a valid date.
+Wwe could also input a unix timestamp like the format we have in Date.now() and so mongo will try to parse ALL of these date formats into a JS
+date and only if it can't, it will then throw an error.
 
-Remember: When the schema is changed and some default fields have been added to the new schema, mongo will automatically update
-all of the old docs, so now they have also those newly added with default option fields!
+Now for testing the new model, we can grab a tour from dev-data folder and pass it in the req for testing the creation of a tour, instead of
+writing all of it manually(remember to remove the id, because we needed before when we were doing our file-based API).
 
+Important: When the schema is changed and some fields with default values have been added to the new schema, mongo will automatically update
+ all of the old docs, so now they have also those newly added with the defined default values!
+
+We wanna write a script which will automatically import all of the tours from tours-simple.json . So it will read the file and get all
+the tours and import them into the DB.
+
+95-13. Importing Development Data:
+We wanna load the data from the JSON file into the DB and this script is completely independent of the rest of our express app and so we will
+run this compltely seprarately, from the command line, just to import everything, once. We can create the file for that script in
+dev-data/data folder.
+In that file, we need the dotenv package, because we need our env variables in order to be able to connect to the db again.
+In this file we also need to connect do db again, because this file runs completely independent from our express application. It's only
+gonna run once in the beginning.
+This file will only run once in the beginning.
+Important: We also need the tourModel file because that file is where we want to write our data to.
+
+<Model>.create() method accepts an object. But it can also accepts an array of objects and in that case, it will create a new doc for
+each of the objects in the array.
+
+Remember: When you read a file which has json file, the variable that we store the result of fs.readFileSync() would be JSON,
+so after reading the file, we need to convert the data of that file into a valid JS object, by using JSON.parse() on the file.
+Important: In first arg of readFileSync() or './tour-simple.json' the dot is always relative to the folder where the node
+application was actually started. So the dot would point to the home folder, so now we're looking for this file in the home
+folder, so it would give us an error.So we must use __dirname which is available for us everywhere.
+
+Now what about the data that is already in the database?
+We can create an easy way to basically delete all of that data at the same time. So let's create a function for this as well named deleteData() .
+
+With deleteMany() and not passing anything to it, it would delete all of the docs in a certain collection that we're calling deleteMany() on it.
+This mongoose's function do exactly the same as deleteMany() in native mongodb.
+
+Now we could call importData() and deleteData() just like this in that file, but we wanna do this by interacting with the command line.
+So we're gonna run that file without calling any of those functions.
+
+The ./ is always relative from the folder where the node application was actually started. So if you run node command from the home folder,
+./ would point to the home folder.
+So in import-dev-data.js , instead of . in path we pass to readFileSync() , we should use __dirname which is available to us everywhere.
+
+Important: When you're running node command, the current directory that you're in is very important.
+ __dirname is always the directory in which the currently executing script resides. So if you typed __dirname into
+ /d1/d2/myscript.js, the value of __dirname would be /d1/d2. By contrast, . (dot)gives you the directory from which you ran
+ the node command in your terminal window. BUT WE HAVE AN EXCEPTION FOR dot (.) INSIDE require():
+ If inside dir2/pathtest.js you have a require call into include a file inside dir1 you would always do:
+ require('../thefile') .
+ Because the path inside require is always relative to the file in which you are calling it. It has nothing to do
+ with your working directory.
+
+So for running import-dev-data.js file from the root of the project, we must run the command: node ./dev-data/data/import-dev-data.js
+
+So we learned that ./ is always pointing to the current working directory except in require(). The require() function,
+translates ./ to the directory of the current file (where the script is located).
+
+You can call the functions in import-dev-data.js, but let's work with terminal. So we can set things up so when we enter some options when
+running the node command, one of our functions will be called and for other option, other function will run.
+
+process.argv is an array of 2 arguments that are running the node process. The first element in that array is where the node
+command is located(so it is equavilant to where the `node` command(which is the first keyword we used in terminal to run program) is stored and
+and the second element in the array is where the script file is located (not the current working directory!)
+Now when you want to run: node <path from current working directory to where the scripts file is located> , you can specify some
+options in end of the command. So let's say: node ./dev-data/data/import-dev-data.js --import . Now in process.argv we have 3
+elements in array. 2 of them are repetitious, but the new one is the option that we put for running the node command which in this
+case is --import.
+
+First run the --delete one and then --import . So we first get rid of old docs.
+So run dev-data/data/import-dev-data.js --import (or --delete)
+
+In terminal we can use -- to specify the options.
+
+In our simple command line app, it will import the data when we specify the --import option when running that file with node, and will
+delete the data when we specify the --delete option in cli.
+So based on some conditions, now we can call our functions in that file.
+
+Now after running these commands, our process would still be running, so let's fix that.
+process.exit() is kind of an aggressive way of stopping an application. But in this little script, it doesn't matter. It wasn't
+really matter to add this method here in our code, but it makes our lives a bit easier so we don't need to use ctrl+c to
+exit the application after the node command has finished. Also I put this process.exit() outside of try catch block, because
+with this, no matter there's an error or not, the process.exit() will always executed.
+
+Now we deleted the old docs from db and then, have imported our data in db that we can start working with them.*/
+/* 96-14. Making the API Better Filtering:
+We wanna implement a couple of common api features, that make api more pleasent to use.
+
+Let's allow user to filter the received data using query string.
+So filtering makes sense on getAllTours() in our API. Why?
+Because this is the endpoint that gets ALL the tours and so we want to allow the user to filter the data, so that instead of getting all
+the data, he only gets the data that matches the filter. So like this, we can basically allow the user to query the data in a easy way, using the
+query string. You can specify the query strings in `Params` tab of postman
+So here we want to allow user to filter data, so he will get only the data that matches the filter.
+A query string starts with a question mark and then user can specify some field-value pairs.
+Now we must access the query string in express and in express the data in query string are on req object and then
+the query property
+
+Important: When you have an async function, if you're awaiting all of the promises that are inside of the total async function AND
+ IF Total function doesn't return a promise itself, you don't need to use await on the calling code and wrap it again in a function
+ with async keyword. That's why when we're calling this function in tourRoutes we didn't use await or ....
+When we don't pass anything into find() method, it will return all the documents in that collection.
+So it's like kind of: First we build the query and then we execute the query with await keyword. Why we can build
+the mongodb query from query string? Because the query string is almost identical to native mongo queries. So with
+some changes we can filter the data using the query string.
+
+Let's say the query string is : ?difficulty=easy&duration=5
+We can access the query string with req.query .
+
+It's crucial to put dotenv.config() BEFORE const app = require('./app') in server.js .
+
+In mongoose, there are actually two ways of writing db queries. The first one is to just use filter object and pass it to find() and ..., so
+again, it works the exact same way as with a normal mongodb query and then the second way is to use some special mongoose methods.
+For writing db queries in this method we can eiter say:
+approach 1:
+const tours = await Tour.find({
+    duration: req.query.duration,
+    difficulty: req.query.difficulty
+});
+
+Or either:
+approach 2:
+const tours = await Tour.find()
+                        .where('duration').equals(req.query.duration)
+                        .where('difficulty').equals(req.query.difficulty);
+
+In second approach, we chain some special mongoose method to basically build the query.
+
+Other mongoose methods are: lte(), let(), gt() (these are like where()) and we can also sort the results or limit the number of results and ... .
+
+Currently, the req.query looks a lot like the object that we pass to find() in approach 1 . So we used approach 1.
+
+Remember: find() will return an object which is a Query (So in this case <model>.query will also return a Query),
+so that's why we can chain other mongoose methods to this code. So on Query.prototype we have a lot of methods like gte,
+sort, where and ... .
+Query.prototype refers to objects that we're creating using Query class.
+Important: As soon as we await the result of query, the query will then execute and come back with the docs that match our
+query. So if we do it like this (using await), then there's no way of implementing sorting or pagination or all of those
+other features. So we must save the part of query into a variable and in the end after we apply all of the methods we want
+to the query, we can await the query and receive the docs.
+So if we await the result of query immediately it would be impossible to sort or limit or use any other method on query.
+
+Now we implemented with .find(req.query), but this approach is too simple. Because later on, we will have other query parameters like
+for example, sort for sorting functionality, or page for pagination and so we need to make sure that we're not querying for these
+in our DB. So if we had page=2 as query string, currently, we would not get any results if we have a key-value pair in query string
+that has nothing to do within the db, then we shouldn't look for that key-value pair in db. BUt with this approach, we WOULD
+query for that key-value in db even it hasn't anything to do with db, like pagination. So if the user request the api with
+query string of ?page=2 , with this implementation (.find(req.query)), we would query the database for page=2, but as we
+know there isn't any doc in collection that has page=2, so the response would be nothing!
+
+So when there's page key-value pair in query string or a few other key-value pairs, we don't want to query db with these
+key-value pairs! But with this implementation we would. So it isn't a good implementation. So we must exclude these SPECIAL
+field names from our query string, BEFORE we actually do the filtering (query the db under a condition).
+
+For doing this task, we must create a shallow COPY of req.query object. So let's create a new variable that gets a COPY of
+req.query and not the req.query itself. The variable is queryObject. For this variable we really need a hard copy of
+req.query and we can't just do: const queryObject = req.query; (assigning req.query to queryObject).Because in further code
+we would exclude (delete) some properties from queryObject and with this, those properties from req.query would ALSO BE
+DELETED (but we don't want this!Because req.query must show all of the key-value pairs from query string not some of them!)
+and that's because:
+Important: In JS, when we set a variable to another object or in other words, assign an object to a variable, that variable
+ would be a reference to the original object. So if you delete something from the variable that we assign the object to it,
+ those properties from the object would be deleted too. So we need to pass a hard copy of req.query to the variable.
+So we need a hard copy.
+So we can use destructuring of an object(with ...<object>) and then create a new object out of that by adding curly brackets around it({...<object>})
+Important: The destructuring will basically take all of the fields out of the object (copying the key-value pairs) and with
+ curly braces we're creating a new object.
+So with this code, we have a new object(not a reference to original object) that is going to contain all the key-value pairs that were in req.query object.
+EX) const queryObj = {...req.query}
+After this let's create an array that is like a list of the parameters that we want to exclude from query string.
+
+We use .forEach() because we don't want to save a new object.
+
+Now we delete the all of the fields from our queryObj, so we loop over the fields we wanna delete from queryObj and then we use the delete operator.
+
+Now we exclueded the key-value pairs that we don't want in queryObj.
+Now even by sending page=2 query string, the results won't be empty, because we would exclude that page=2 from our filter query.
+So our filter feature ignores the page, sort and limit fields.
+
+The find() method is gonna return an object which is a Query and on Query.prototype , we have a lot of methods in mongoose
+like where() , gt() , sort() and ... and that is the reason why we CAN then chain other methods like .where() or .equals() or ... .
+
+Query.prototype refers to objects that we're creating using the Query class. So this is the reason that we can do this chaining.
+
+As soon as we actually `await` the result of query like await Tour.find() , the query will then execute and come back with the
+docs that match our query and so if we do it like this(like await Tour.find()), then, there is no way of later, implmeenting sorting or
+pagination or all the other features. So instead, we need to save the Tour.find() part into a query and then in the end, as soon as we
+change all the methods to the query that we need to, only then by the end, we can `await` that query. For example we're gonna use the
+sort() method or project() or limit() and we're gonna chain them to this query(Tour.find(queryObj)) and that would be impossible to do if we
+await the result of the initial query(which in this case is Tour.find()) right away.
+
+So instead of writing this:
+EX)
+const tours = await Tour.find(queryObj);
+we say:
+const query = Tour.find(queryObj);
+or
+const query = Tour.find()
+                  .where('duration')
+                  .equals(5)
+                  ...
+
+const tours = await query;
+
+So build the query and after working with it, we execute the query. */
+/* 97-15. Making the API Better Advanced Filtering:
+
+In mongo, when we want to use an operator we must start another object: {duration: {$gt: 5}} So in this example for using
+greater than operator we must start a new object. But in query string we must place the operator inside a pair of brackets
+before the equal sign. For example: ?duration[gte]=5&difficulty=easy
+Now if use console.log(req.query), the result would be: { duration: { gte: '5' }, difficulty: 'easy'} which is almost
+identical to the filter object that we write in native mongo, the only difference is the $ in mongo filter object for operators
+that query string doesn't have it. So now we get the query string and then delete the key-value pairs other than the
+excludedFileds array.
+Learn: Now we know from beginning that query string is almost identical to native mongodb filter object. So we must prepare
+that if user send [<operators>] in query string we must add $ to them in the queryObject.
+
+Now how we add $ to operators in queryObject variable? First we should convert the queryObject object to string. AFTER THIS
+WE CAN use .replace() method on it. Remember that .replace() only works on strings not objects or ... .
+In regular expression, we need to find one the operators and replace it with the $ one and we add \b before and after the
+inner parentheses because we want to find these exact words. So imagine there's a word inside the string that has lt in it.
+But we don't want to replace that word but we want to replace a word that is EXCATLY lt, without any other string stick to
+it. So because of this we used \b. The g flag means that it will happen multiple times, so if we even have 2 or more of
+those words, it would do the same for ALL of them. But without the g flag, it will replace only the first occurance of
+those words and won't check further.
+replace() method also accepts a callback and in this callback the first arg is the matched word and What you
+return in that callback will be replaced to the matched content.
+Important: The replace() in JS returns a new array.So you must store it in a variable (usually in the original variable, so
+ the variable must be declared with let and not const.Because we're reassign it to a new array.).
+
+Important: The mongodb and mongoose methods need queries to be objects.
+The $gte and ... are filter functionality that our API has them.
+
+Now we must create the sorting feature that a user can sort the results based on some fileds which those fields can be passed
+into query strings..*/
+
+
+
+/*
 Virtual properties are basically fields that we can define in our schema but that won't be persisted. So they won't save into
 database in order to save us some space but most of the time, we want to really save our data to db, but virtual properties make
 a lot of sense for fields that can be derived from one another. For example a conversion from miles to kilometers. (We know that
@@ -417,35 +911,6 @@ Learn: There's 2 ways of specifying the validator function (our own or built-in 
  }
 */
 
-/* Remember: For using async await, you must create a function. Right? Because async is usually used in declaring function itself. */
-/* Model layer is concerned about the data and the business logic. In controller layer, handles application's request, interact with
-* models and send back responses to the client (app logic). View layer is necessary if we have graphical interface or if we're building a
-* server-side rendered website (persentation logic). */
-/* Everything starts with a request. Then that request will hit one of our routers. Because we have one router for each resource.
-* Now the goal of the router is to delegate the request to the correct handler function and that function will be in one of the the
-* controllers and we know that there will be one controller for each resource. Then depending on the request, the controller might need
-* to interact with one of the models and again there is one model file for each resource. After getting data from the model,
-* the controller might then be ready to send back a response to the client.
-* But in case that we want to render the website there is one step involved. In this case after getting the data from model,
-* then the controller will select one of the view templates and inject the data from model to it and that rendered website will send
-* back as response.
-* In view layer, usually there's one view template for each page.
-*
-* MVC separates business logic from application logic.
-* application logic is code that is only concerned about the application's implementation and not the underlying business problem
-* that we're trying to solve with the application, like showing and selling tours.
-* So application logic is the logic that makes the app actually work. For example, a big part of application logic in express is
-* all about managing requests and responses. So application logic is more about TECHNICAL STUFF. Also if we have views in our app,
-* the application logic serves as a bridge between model and view layers. So we never mix business logic with presentation logic.
-*
-* About business logic, it's the code that actually solves the business problem we set to solve.For example, our goal is to show
-* tours to customers and then sell them and the code that is directly related to the business rules or to how the business works
-* and the business needs is business logic. EX) Creating new tours, checking if user's password is correct, validating user's input
-* data, ensuring only users that bought the tour can review it and ...
-* So we must do our best to keep application logic code in controllers and business logic code in models.
-*
-* Fat models/thin controllers: We should offload as much logic as possible into the models, to keep the controllers simple and lean.
-* So the controllers are mostly for managing app's requests and responses.   */
 /* Mongoose is just a layer of abstraction on top of mongodb, which is why mongoose doesn't use the exact same functions, but
 still it gives us access to similar ones or some exact function names, like deleteMany() which has a same name in native
 mongodb. */

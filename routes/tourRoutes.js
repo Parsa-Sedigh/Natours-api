@@ -7,6 +7,8 @@ const tourController = require('../controllers/tourController');
 export and then import these separate routers into our main file. (When we have only one thing to export, we use module.exports = <the thing>) */
 const router = express.Router();
 
+// router.param('id', tourController.checkId)
+
 /* Now let's say this is a request that is done all the time and we want to provide a route that is simple
 and easy to memorize for the user. So we need to create a new route. Let's call this new route, top-5-cheap
 and we just need to make availabe a get request to this route.So we say .route().get()
@@ -33,6 +35,7 @@ router.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
 router
   .route('/')
   .get(tourController.getAllTours)
+  // .post(tourController.checkBody, tourController.createTour);
   .post(tourController.createTour);
 
 router

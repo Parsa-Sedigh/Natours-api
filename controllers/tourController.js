@@ -1,5 +1,5 @@
-"use strict";
-
+'use strict';
+const fs = require('fs');
 const Tour = require("../models/tourModel");
 const APIFeatures = require("../utils/apiFeatures");
 const catchAsync = require("../utils/catchAsync");
@@ -9,8 +9,7 @@ const AppError = require("../utils/appError");
 method.
 const appFileName = __dirname.replace(/\\/g, '/');
 const tours = JSON.parse(fs.readFileSync(`${appFileName}/../dev-data/data/tour-simple.json`)); */
-/* const fs = require('fs');
-exports.checkID = (req, res, next, val) => {
+/* exports.checkID = (req, res, next, val) => {
     console.log(`Tour id is : ${val}`);
 
     if (req.params.id * 1 > tours[tours.length - 1].id) {
@@ -24,6 +23,7 @@ exports.checkID = (req, res, next, val) => {
         next();
     }
 }; */
+
 /* exports.checkBody = (req, res, next) => {
      But why we created this middleware? Instead we could check the body in createTour route handler function!!
      No, it would be a bad practice.The createTour route handler must have it's own functionality and not anything else.
@@ -47,100 +47,8 @@ exports.checkID = (req, res, next, val) => {
     }
 
 }; */
-/* Let's allow user to filter the received data using query string. So filtering makes sense on getAllTours() in our API.
-So here we want to allow user to filter data, so he will get only the data that matches the filter. 
-A query string starts with a question mark and then user can specify some field-value pairs.
-Now we must access the query string in express and in express the data in query string are on req object and then
-the query property.*/
+
 exports.getAllTours = catchAsync(async (req, res, next) => {
-  /*
-  Important: When you have an async function, if you're awaiting all of the promises that are inside of the total async function AND
-   IF Total function doesn't return a promise itself, you don't need to use await on the calling code and wrap it again in a function
-   with async keyword. That's why when we're calling this function in tourRoutes we didn't use await or ....
-  When we don't pass anything into find() method, it will return all the documents in that collection.
-  So it's like kind of: First we build the query and then we execute the query with await keyword. Why we can build
-  the mongodb query from query string? Because the query string is almost identical to native mongo queries. So with
-  some changes we can filter the data using the query string.
-
-  Let's say the query string is : ?difficulty=easy&duration=5
-
-  For writing db queries in this method we can eiter say:
-  const tours = await Tour.find({
-      duration: req.query.duration,
-      difficulty: req.query.difficulty
-  });
-
-  Or either:
-  const tours = await Tour.find()
-                          .where('difficulty').equals(req.query.difficulty)
-                          .where('duration').equals(req.query.duration);
-
-  Other mongoose methods are: lte(), gt() and ...
-  Remember: find() will return an object which is a Query (So in this case <model>.query will also return a Query),
-  so that's why we can chain other mongoose methods to this code. So on Query.prototype we have a lot of methods like gte,
-  sort, where and ... .
-  Query.prototype refers to objects that we're creating using Query class.
-  Important: As soon as we await the result of query, the query will then execute and come back with the docs that match our
-  query. So if we do it like this (using await), then there's no way of implementing sorting or pagination or all of those
-  other features. So we must save the part of query into a variable and in the end after we apply all of the methods we want
-  to the query, we can await the query and receive the docs.
-  So if we await the result of query immediately it would be impossible to sort or limit or use any other method on query.
-
-  Now we implemented with .find(req.query), but this approach is too simple. Because if we have a key-value pair in query string
-  that has nothing to do within the db, then we shouldn't look for that key-value pair in db. BUt with this approach, we WOULD
-  query for that key-value in db even it hasn't anything to do with db, like pagination. So if the user request the api with
-  query string of ?page=2 , with this implementation (.find(req.query)), we would query the database for page=2, but as we
-  know there ins't any doc in collection that has page=2, so the response would be nothing!
-  So when there's page key-value pair in query string or a few other key-value pairs, we don't want to query db with these
-  key-value pairs! But with this implementation we would. So it isn't a good implementation. So we must exclude these special
-  field names from our query string, before we actually do the filtering (query the db under a condition).
-  For doing this task, we must create a shallow COPY of req.query object. So let's create a new variable that gets a COPY of
-  req.query and not the req.query itself. The variable is queryObject. For this variable we really need a hard copy of
-  req.query and we can't just do: const queryObject = req.query; (assigning req.query to queryObject).Because in further code
-  we would exclude (delete) some properties from queryObject and with this, those properties from req.query would ALSO BE
-  DELETED (but we don't want this!Because req.query must show all of the key-value pairs from query string not some of them!)
-  and that's because:
-  Important: In JS, when we set a variable to another object or in other words, assign an object to a variable, that variable
-  would be a reference to the original object. So if you delete something from the variable that we assign the object to it,
-  those properties from the object would be deleted too. So we need to pass a hard copy of req.query to the variable. So
-  we can use structring and then create a new object out of that.
-  The structuring or ... will basically take all of the fields out of the object (copying the key-value pairs) and with
-  curly braces we're creating a new object. So with this code, we have a new object(not a reference to original object)
-  that is going to contain all the key-value pairs that were in req.query object.
-  After this let's create an array that is like a list of the parameters that we want to exclude from query string.
-
-  We use .forEach() because we don't want to save a new object.
-
-  In mongo, when we want to use an operator we must start another object: {duration: {$gt: 5}} So in this example for using
-  greater than operator we must start a new object. But in query string we must place the operator inside a pair of brackets
-  before the equal sign. For example: ?duration[gte]=5&difficulty=easy
-  Now if use console.log(req.query), the result would be: { duration: { gte: '5' }, difficulty: 'easy'} which is almost
-  identical to the filter object that we write in native mongo, the only difference is the $ in mongo filter object for operators
-  that query string doesn't have it. So now we get the query string and then delete the key-value pairs other than the
-  excludedFileds array.
-  Learn: Now we know from beginning that query string is almost identical to native mongodb filter object. So we must prepare
-  that if user send [<operators>] in query string we must add $ to them in the queryObject.
-
-  Now how we add $ to operators in queryObject variable? First we should convert the queryObject object to string. AFTER THIS
-  WE CAN use .replace() method on it. Remember that .replace() only works on strings not objects or ... .
-  In regular expression, we need to find one the operators and replace it with the $ one and we add \b before and after the
-  inner parentheses because we want to find these exact words. So imagine there's a word inside the string that has lt in it.
-  But we don't want to replace that word but we want to replace a word that is EXCATLY lt, without any other string stick to
-  it. So because of this we used \b. The g flag means that it will happen multiple times, so if we even have 2 or more of
-  those words, it would do the same for ALL of them. But without the g flag, it will replace only the first occurance of
-  those words and won't check further.
-  replace() method also accepts a callback and in this callback the first arg is the matched word and What you
-  return in that callback will be replaced to the matched content.
-  Important: The replace() in JS returns a new array.So you must store it in a variable (usually in the original variable, so
-   the variable must be declared with let and not const.Because we're reassign it to a new array.).
-
-  Important: The mongodb and mongoose methods need queries to be objects.
-  The $gte and ... are filter functionality that our API has them.
-
-  Now we must create the sorting feature that a user can sort the results based on some fileds which those fields can be passed
-  into query strings.
-
-  */
   /* Instead of keeping all of the features of our API in this function, we create a class for our APIFeatures and put each one
   of our API features in one method of that class. */
   /* 1)Filtering the results:
@@ -348,10 +256,8 @@ exports.getAllTours = catchAsync(async (req, res, next) => {
     }
   });
 });
+
 exports.getTour = catchAsync(async (req, res, next) => {
-  /* findById() is a shorthand or a helper function for findOne() method. So we could also say:
-  Tour.findOne({ _id: req.params.id }) So findById() is a shorthand for writing the filter object in findOne() and behind the scenes
-  the findByID() will work exactly like findOne(). */
   // try {
   //     const tour = await Tour.findById(req.params.id);
   //     res.status(200).json({
@@ -384,46 +290,24 @@ exports.getTour = catchAsync(async (req, res, next) => {
   });
 
 });
+
 exports.createTour = catchAsync(async (req, res, next) => {
-  /* This code will work but there's an easier way.
-    const newTour = new Tour({
-      name: req.body.name,
-      price: req.body.price,
-      rating: req.body.rating
-  });
-  newTour.save().then();
+  // const newId = tours[tours.length - 1].id + 1;
+  // const newTour = Object.assign({ id: newId }, req.body);
+  //
+  // tours.push(newTour);
+  // fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`,
+  //   JSON.stringify(tours),
+  //   err => {
+  //     res.status(201).json({
+  //       status: "success",
+  //       data: {
+  //         tour: newTour
+  //       }
+  //     });
+  //   });
 
-   The difference is in this approach, we call save() method on new document, but in the next approach we call the create() method
-   on model itself (directly) instead of calling the method on the instance of model which is our new document.
-   In Tour.create(), because .create() returns a promise, in order to access the document that was created inside db, we must
-   use .then() . But it's better to use async await. So we are waiting for the returned promise of .create() and save the resolved value
-   of this promise to newTour variable.
-   Remember: With using async await, we need to test for errors by using try catch syntax.
-   In catch block we have access to error object, by specifying a name for argument that stores the error object.
-   Also in catch block, we need to think what the errors would be? One error would be the request didn't provide all of the
-   required fields that we specify in schema and that's a validation error. Because if we try to create a doc without one of the
-   required fields, then the promise that is returned from .create(), would be rejected and if we have a rejected promise,
-   it will enter the catch block.
-   Learn: Rejected promises will enter the catch block.
-   Learn: 400 status code means bad request.
-
-   Remember: If eslint gives an error that says: The async functions are not supported... . This is because of node plugin. So go
-    to package.json and in there define the node version that you're using. So after devDependencies, say:
-    "engines": {
-      "node": ">12.0.0"
-    }
-
-    But with even specifying ">7.6.0" it's enough to make this error disappear. But it's better to specify the real version of node
-    that you're currently using.
-
-    Learn: When the client send additional fields that aren't in the schema, those additional fields and values will ignored by
-     the schema and won't inserted into db.
-
-    In this function, we're creating docs, USING MONGOOSE.  */
-
-  /*
-  try {
-
+  /* try {
       const newTour = await Tour.create(req.body);
       res.status(201).json({
           status: 'success',
@@ -436,8 +320,8 @@ exports.createTour = catchAsync(async (req, res, next) => {
           status: 'failed',
           message: err
       });
-  }
-*/
+  }*/
+
   const newTour = await Tour.create(req.body);
   res.status(201).json({
     status: "success",
@@ -446,33 +330,9 @@ exports.createTour = catchAsync(async (req, res, next) => {
     }
   });
 });
+
 exports.updateTour = catchAsync(async (req, res, next) => {
-  /* When we update an object or a resource, we send back 200 for status code.
-  In third arg of findByIdAndUpdate(), we pass in an object of options and in there we can set new property to
-  true and by setting that property to true, the new updated document is the one that will be returned from that method
-  rather than the original doc and since we want to send back that updated document, we always want this method
-  So also to return that updated doc. we must store that retuned doc into a variable.
-  With setting true for runValidators option, each time that we update a certain doc, then the validators that we
-  specify in the schema will run again.
-  Learn: When we say: <class>.prototype. ... , it means an object that was created from a class. For example:
-   Tour.prototype.save() means an object created from Model class. So save() method in there refers to a document
-   and not on the Tour Model class, which is an object from Model class.
-  Important: So in mongoose when you see Model.prototype.save() we find out that the save() method is going to be
-   available on all of the instances created through the Model class and save() it's not available on Model itself.
-   So if you try to write Tour.save() it would give an error, but if you use .save() on a document (an object) created through
-   the Tour, it would work.
-
-  Methods like findById() or update() or ... will return query objects.
-
-  Instead of tour: tour we in an object we can say: tour.
-  Remember: In updating a doc, if you send additional fields that curr aren't exist in database, they would be ignored.
-
-  Because of runValidators: true , if we send String Instead of Numbers when updating docs, it would give us an error. Because
-  it would look at the schema for data types.
-  Also because for updating we're using PATCH HTTP method, the original doc wouldn't replaced by the new object that we sent in.
-  But if we were using PUT request, the original object (doc) would completely replaced with the new one that is sent in and in
-  that case it won't work with findByIdAndUpdate() method. Because this method updates the fields that are different in body
-  and in db.*/
+  /* When we update an object or a resource, we send back 200 for status code.*/
   // try {
   //     const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
   //         new: true,
@@ -507,6 +367,7 @@ exports.updateTour = catchAsync(async (req, res, next) => {
   });
 
 });
+
 exports.deleteTour = catchAsync(async (req, res, next) => {
   /* We need to save the result of awaiting the Tour.findByIdAndDelete(req.params.id) . */
   // try {

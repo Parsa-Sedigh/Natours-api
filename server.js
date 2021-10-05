@@ -17,7 +17,7 @@ const app = require("./app");
 in .config file.
 In .connect() method for mongoose, in second arg we need to pass in an object of options in order to deal with some dependency
 and deprecation warnings. Also remember: connect() method is gonna return a promise and in result (resolved value) of .then()
-we have access to connection object or con */
+we have access to connection object or con. */
 const DB = process.env.DATABASE.replace("<PASSWORD>", process.env.DATABASE_PASSWORD);
 mongoose.connect(DB, {
   useNewUrlParser: true,
