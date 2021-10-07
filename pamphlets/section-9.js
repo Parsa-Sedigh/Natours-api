@@ -575,6 +575,17 @@ So when there's page key-value pair in query string or a few other key-value pai
 key-value pairs! But with this implementation we would. So it isn't a good implementation. So we must exclude these SPECIAL
 field names from our query string, BEFORE we actually do the filtering (query the db under a condition).
 
+For filtering, we want to change (in this case, delete) some fields of req.query, so we must hard copy the req.query, so
+with this approach, the further code that is using req.query won't work with changed req.query, but with original req.query
+object.
+IMPORTANT: When you're using a string method in JS that is returning a NEW array or NEW strting or ..., you must store the
+result of using that method in a variable, because if you just console.log() the string or array that use a method on it,
+that method doesn't change the original array or string. So you must store the result of using a method on an array or string
+to get the changes and if you want to store the result of using a method on an array or ... on that variable itself, you must
+declare that variable with let not const from beginning. Because by using a method on that variable, you're changing that whole
+variable.Like what we did with queryStr below. Or what we did with fields variable in further code...(we declared it with let and
+other stuff that I mentioned.)
+
 For doing this task, we must create a shallow COPY of req.query object. So let's create a new variable that gets a COPY of
 req.query and not the req.query itself. The variable is queryObject. For this variable we really need a hard copy of
 req.query and we can't just do: const queryObject = req.query; (assigning req.query to queryObject).Because in further code
@@ -627,36 +638,369 @@ const tours = await query;
 
 So build the query and after working with it, we execute the query. */
 /* 97-15. Making the API Better Advanced Filtering:
+Right now, a user can only filter the docs by setting one key equal to a value in the query string of request. But now, we actually want
+also to implement the greater than, the greater or equal than, the less than and the less or equal than operators. So instead of just having
+equal like: difficulty=easy , we wanna be able to for example say: duration >= 5 and not just equal. In this case, what would the filter object actually
+look like in mongo?
+The query in mongo would be:
+{difficulty: 'easy', duration: {$gte: 5}}
+
+When we want to use an operator in mongo, we need to create another object, so to duration, we would need to pass in another object in order to use
+a mongo operator. So this was how we would manually write the filter object for the query that I mentioned.
+Now in postman, we wanna look at a kind of standard way of writing a query string including these OPERATORS and for this, BEFORE the equal sign,
+we open up the brackets and in there, we write the operator.
 
 In mongo, when we want to use an operator we must start another object: {duration: {$gt: 5}} So in this example for using
 greater than operator we must start a new object. But in query string we must place the operator inside a pair of brackets
 before the equal sign. For example: ?duration[gte]=5&difficulty=easy
-Now if use console.log(req.query), the result would be: { duration: { gte: '5' }, difficulty: 'easy'} which is almost
-identical to the filter object that we write in native mongo, the only difference is the $ in mongo filter object for operators
-that query string doesn't have it. So now we get the query string and then delete the key-value pairs other than the
-excludedFileds array.
+So basically like this, we add a third part to the key value pair, so we have the key(duration), the value and now also the operator.
+So again, we use these brackets, in order to specify the operator.
+
+Now if you send a req with this query string, you will get an error, but we will fix this. Because currently, mongo cannot really use the query
+string or the queryObj as we have it right now.
+
+Now if use console.log(req.query), the result(query object) would be: { duration: { gte: '5' }, difficulty: 'easy'} which is almost
+IDENTICAL to the filter object that we write in native mongo, the only difference is the $ in mongo filter object for operators
+that query string doesn't have it.
+So we have:
+
+So that's the only thing that is missing in the front of the operator name in req.query.
+The solution for this, is to basically replace all the operators with their corresponding mongodb operator, so basically adding that
+$ in front of them.
+So now we get the query string and then delete the key-value pairs other than the excludedFields array.
 Learn: Now we know from beginning that query string is almost identical to native mongodb filter object. So we must prepare
 that if user send [<operators>] in query string we must add $ to them in the queryObject.
 
-Now how we add $ to operators in queryObject variable? First we should convert the queryObject object to string. AFTER THIS
-WE CAN use .replace() method on it. Remember that .replace() only works on strings not objects or ... .
+Now how we add $ to operators in queryObject variable?
+First we should convert the queryObject object to string by using JSON.stringify(). AFTER THIS WE CAN use .replace() method on it.
+The ones that we wanna replace are: gte, gt, and ... and there are a couple of ways in which we can do it, but we're gonna use a regular
+expression. So we wanna match one of these words that I mentioned and then replace it with the same words but with a dollar sign in front of
+it, to make it look like a query in mongodb. Remember that .replace() only works on strings not objects or ... .
+
 In regular expression, we need to find one the operators and replace it with the $ one and we add \b before and after the
-inner parentheses because we want to find these exact words. So imagine there's a word inside the string that has lt in it.
-But we don't want to replace that word but we want to replace a word that is EXCATLY lt, without any other string stick to
-it. So because of this we used \b. The g flag means that it will happen multiple times, so if we even have 2 or more of
-those words, it would do the same for ALL of them. But without the g flag, it will replace only the first occurance of
+inner parentheses because we only want to match these exact words. So imagine there's a word inside the string that has `lt` in it.
+But we don't want to replace that word but we want to replace a word that is EXACTLY lt, without any other string stick to
+it or around it. So because of this we used \b. The g flag means that it will happen multiple times, so if we even have 2 or more of
+those words, it would do the same for ALL of them. But without the g flag, it will replace only the first occurrence of
 those words and won't check further.
-replace() method also accepts a callback and in this callback the first arg is the matched word and What you
-return in that callback will be replaced to the matched content.
-Important: The replace() in JS returns a new array.So you must store it in a variable (usually in the original variable, so
+replace() method also accepts a callback and in this callback the first arg is the matched word or matched string and What you
+return in that callback will be the new string that will replace the old one.
+
+Important: The replace() in JS returns a NEW array. So you must store it in a variable (usually in the original variable, so
  the variable must be declared with let and not const.Because we're reassign it to a new array.).
+ By storing it in the previous variable that holds the old string(the string that was not yet replaced with new strings), it means we're actually
+ mutating the data.
+So when we have:
+ex)
+let queryStr = '<string>';
+queryStr = queryStr.replace(...);
+
+We're mutating the queryStr variable.
+Also note that if we don't store the result of queryStr.replace() to some variable(whether it is a new variable or not), we aren't using
+the RESULT of replacing, so it's a USELESS code. So we have to save the result of replace() back to a variable to use that result later.
+
+Now if you wouldn't have any operators in the queryStr, then everything will work just fine, so it won't replace anything.
+
+Another example:
+ex) 127.0.0.1:3000/api/v1/tours/duration[gte]=5&difficulty=easy&price[lt]=1500
+
+So now our filter, accepts these four operators. Now in the real world, we would have to write some documentation in order to allow
+the user to know which kinds of operation they can do on our API.
 
 Important: The mongodb and mongoose methods need queries to be objects.
 The $gte and ... are filter functionality that our API has them.
 
 Now we must create the sorting feature that a user can sort the results based on some fileds which those fields can be passed
-into query strings..*/
+into query strings.
 
+Now let's implement sorting functionality.
+
+98-16. Making the API Better Sorting:
+Let's now implement result sorting, so sort the result based on a certain field. For example we wanna sort by price, so in query stirng,
+we say: sort=price .
+Now nothing will happen and the order of results would not change, because we filtered out this sort field with some code that we wrote.
+So we first created the queryObj by saying:
+const queryObj = {...req.query};
+tnn we excluded some fields from it and created the excludedFields variable, so those field wouldn't pullote our filtering.
+BUT now we actually need those excluded things.
+
+Important: We STILL can use req.query with it's ORIGINAL format that user sent to us, because we made a COPY from it for the queryObj.
+ Because we have: const queryObject = {...req.query};
+
+We must declare query variable with let, because in further code we want to CHAIN something to this query, query = query.sort()
+
+Remember: <model>.find() will return a query, so because it returns a query we must store that query object in a variable, so then later on,
+we can AGAIN chain more other mongoose methods on that variable which keeps the query as value.
+So later on, we can keep chaining more methods on the previously stored query object. So more of those methods that are available on all docs
+created through the Query class.
+ex) query = query.sort(req.query.sort); // with this, we sort the results based on the sort, in ascending way(keep increasing)
+
+Learn: sort() method for numbers is making results ascending by default.
+But if you want to sort them in desc order you can set the value of query string to -<value>. For example: ...?sort=-price .
+This would be sort the price field desc(so mongoose will then automatically sort them in the descending order).
+
+We can have some docs that have some equal or same fields based on sorting, now how they would sort? For example how results
+with same price would ordered within themselves? So for example: 997, 320, 320, ... . How those 2 docs with 320 price field
+would ordered in results? So we want to sort(rank) them based on a second criteria. So in case that there's a tie, then we want
+to have a second field by which we can then sort the docs that are tie in first field(in this case the first field is price).
+
+In mongoose this is easy, so we list the fields that the sorting would be based on them: sort('price ratingsAverage') , in this
+example, if the price was tie, those docs that have an equal price would be sort based on their ratingsAverage (so we put another field name
+to the string we pass to .sort()) . But for specifying the sort fields in query strings, we must separate them by comma and we cannot leave a
+space in the url when we're requesting an endpoint of api, therefore, we use a comma.
+So in the prior example, the query string would be: ...?sort=price,ratingsAverage .
+In this example, we wanna sort FIRST by price and then as a second criteria, also by ratingsAverage.
+So as you saw, in mongoose and in sort() method, we separate fields for sorting with spaces, but in query strings we separate them by comma.
+So we must manipulate req.query.sort and replace commas with a space.
+So let's create a variable called sortBy and we're gonna split req.query.sort by the comma and this will then return an ARRAY of all the strings,
+so all the field names in this case and then we have to put it back together using .join() .
+
+Now if two fields ALSO are even equal by ratingsAverage, we need to pass in another criteria!(if this matters to us of course!)
+
+Now let's add a default sort and we do that by adding an else block. So in case that the user does not specify any sort field in the
+query string url, we're still gonna add a sort to the query and we will sort by createdAt field in descending order, so that the newest ones appear
+first and if they're createdAt field were the same, we have not specified a second default criteria, so they would be just come one after another
+without an explicit order.*/
+/* 99-17. Making the API Better Limiting Fields:
+In order to allow clients to choose WHICH fields they want to get back in the response, we want to implement this feature.
+
+For a client it's always ideal to receive as little data as possible in order to reduce the bandwidth that is consumed with each request and
+that's specially true when we have really data-heavy data sets. So the api user should request only SOME of the fields.
+
+In query string, user lists the fields that he wants. For example: ...?fields=name,duration (Remember: In query string, we
+can't have white space.)
+We create a variable called fields , because just like before, mongoose actually requests a string with the field name separated by spaces.
+
+select() expects a string like: .select('name duration price') and so this way, it will only select these three field names and send back
+the result only containing them.
+The operation of selecting only certain fields of results is called projecting which uses .select() method in mongoose.
+By saying: req.query.fields.split(',').join(' ') , we will produce sth like: 'name duration price' which is what we want to pass to .select() .
+
+Now we also want a default so in case the user doesn't specify the `fields` field in query string. Put the code for this task in else block and
+in this case, we actually want to REMOVE sth. Remove what?
+Currently, we always have that __v field which is set to 0 and mongoose creates __v field in each doc and sets it to 0.
+Because it use those fields internally and we could disable them but
+that's not a good practice. Because mongoose actually uses them. But what we can do is never send them to the client. So
+we can EXCLUDE them. and the way we exclude sth from response, is to instead of doing query.select('__v') like before,
+Sp minus in select() is for excluding and not including.
+we can exclude a field from sending it from server to client by using -<field name> in select()
+method. Basically select() method, sends some fields from server to client. So with select('-__v'), we're only excluding __v field.
+Notice that by using -<field names>, we EXCLUDE that field and send EVERYTHING EXCEPT that field(s) to the client. But when
+you're using <field names> in select() method, ONLY THE SPECIFIED fields will send to the client.
+
+Note: We can't exclude _id field.
+
+This point also applies in query string. So if user writes: fields=-name in query string, everything EXCEPT `name` field would send to the client
+and if writes fields=name , only the name field would send and ... .
+ex) 127.0.0.1:3000/api/v1/tours?fields=-name,-duration
+This means, the user wants everything except name and duration. So we don't send the name and duration in docs.
+
+We can also exclude fields right from the SCHEMA. For example when we have sensitive data that should only be used internally.
+For example, stuff like password should NEVER BE EXPOSED TO THE CLIENT.Therefore we can exclude some fields right from the schema.
+Or for example, we might not want the user to see when exactly each tour was created, why? For example tour might already be kind of
+old and so let's say we want to always hide the createdAt field.
+So always in this case means from the schema and not from the controllers. So we must go to where the schema is created and defined.
+So it is in models and for any field we want to always hide it from client, we can set the select property to false for it. So with
+this, we can permanently hide that field from the output and therefore from the client (don't send them).
+
+
+Right now if user requests some fields in fields parameter in query string except situations like ?fields=name, ... (everything
+except __v) the __v field would send to client.But if user doesn't specify any field, __v wouldn't send by server. You can don't
+send the __v at all, like what we did below. BUUUUUUUUUT! Disabaling __v or version key is NOT recommended and also you can't do it
+with something like: fields = fields.concat(' -__v'); because mongoose would throw an error and say:"Projection cannot have a mix of
+inclusion and exclusion." and this is very clear. Because the user specifies some inclusions in query string and after that in code,
+we are excluding something and both of them in a request are not allowed. So because of that it would give an error.
+If you want to disable version key or __v, you must do it in the schema, by saying: (which is not recommended)
+{
+    versionKey: false
+}
+
+100-18. Making the API Better Pagination:
+We must allow users to only select a certain page of the results, in case we have a lot of results.
+
+Now how are we gonna implemnet pagination using query string?
+We will use the `page` and `limit` fields.
+ex) 127.0.0.1:3000/api/v1/tours?page=2&limit=50
+
+For this we must use page and limit fields in query string. The limit field is the amount of results that we want per page and
+the limit() in mongoose does the exact thing that I mentioned. So it is amount of results that we
+want in the query and the skip() is amount of results that should be skipped before actually querying the data. For example: ...?page=2&limit=10
+The prior query string the user wants page number 2 and each page must have 10 results. So it's clear that the results 1 to 10 are one page 1 and
+11 to 20 are on page2, in other words we want to skip 10 results before we actually start querying and 21 to 30 will be page 3 and ... .
+So it would be skip(10).limit(10) in mongoose.
+So in order to implement pagination, in mongoose, we want the skip() and limit() methods.
+The limit() method is actually exactly the same as the limit that we defined in the query string. So it's basically the amount of results
+that we want in the query.
+
+Another example: If user wants page number 3, first, 20 results would have to be skipped.
+So we need some way of calculating the value we pass to skip() , based on page and limit values.
+
+But you might ask why we do not directly asked for skip value in query string from user?
+Because for user, the skip value is abstract. In other words, for user, it's much easier to not deal with skip value. So the user just should
+say, "I want page number 6" and not specify the skip value.
+We want some default values for page and limit too.
+So we still want pagination even if the user does not specify any page or any limit. Because we don't want to show ALL of the results
+for user's request.
+So we can define some variables for default pagination. The default value we choose is page = 1 and limit=100 , so that by default when
+a user requests ALL of the tours(so it means he didn't specify any limit or page value), then he'll only get 100 results and not ALL of the
+docs.
+
+Important: The values of parameters in query string are always string.Even if we define number for values. So if you write:
+req.query.<field in query string> , it would gives us the value of that parameter in query string and that value would be a string.
+For example: ?page=2 , The value would be string not number. So 2 in this example is a string not number.So for further calculation it's better to
+convert it to number. So we can multiply it by 1. So each time that is a number in query string it will be a strung, so we need to fix that,
+simply by multiply it by 1.
+Learn: The const variable = <value> || <default value> is how we define a default value for a variable.
+So for example if user didn't specify the page number, the value for page number would be 1
+Ideally the user would only specify the page number that he requests and not even bother with the page limit, that's for more specific use cases.
+so the page limit would be 100 in that case that user doesn't specify it.
+
+The skip variable represents all the results that come before the page that user requested. So for example if user requests page number 3 with
+the limit of 10, the results would start from 21 till 30 . So we must skip 20 results before that and 20 results is 2 * 10, so 2 * <limit> and
+2 * 10 is (3 - 1) * 10 and here, 3 is the page that we're on. Here, (page - 1) means the previous page.
+Important: Formula for pagination:
+ const skip = (page - 1) * limit
+
+So (page - 1) * limit result, is amount of the results that come before the page that we're ACTUALLY requesting now(we actually need).
+
+Also if user requested a page that is not exists(for example we have only 5 docs and user requested: ?page=4 , so in this request, the limit
+would get a default value which is 100. So the skip for the previous request would be 3 * 100, so we're skipping 300 docs of db, but we have
+only 5 docs, so the results would be none. We want to throw an error instead of returning zero results for client and this situation happen when
+there's the page parameter in query string. So we must do it in an if statement).
+
+So if user requests a page that does not exist(means we don't have enough results to having that page number that user requested), we throw an error
+and this situation happens, when there IS a page key string, on the query.
+Only in this case, we will test if we are skipping more tours(docs) than we ACTUALLY have, so:
+const numTours = await Tour.countDocuments();
+
+On a Model.prototype like Tour, we can use countDocuments() method.
+Now if the number of docs that we skip is greater than the number of docs that ACTUALLY EXISTS, then that means the page doesn't exist.
+So we throw an error in case that we're trying to skip more docs that we ACTUALLY have.
+
+Why we're throwing a new error in that if statement?
+Important: Because if we throw a new Error in a try block, it will automatically and IMMEDIATELY move to the catch block and in there it
+  would send back the 404 response.
+We will create a better error handling later.
+
+Currently, the error that we specify in the throw new Error() that we just implemented, doesn't get shown in postman! Why? I don't know, so
+that message property is just an empty object and hasn't the string that we specified in throw new Error() , but it DID enter the catch() {} block.
+NOTE: BUT!!!!!! you can also not throw any error and just return an empty result, you can see this in apiFeatures.js
+
+If we pass that if statement that checks req.query.page for checking if we're trying to skip more docs that we actually have,
+our query will then be awaited at last, instead of chaining more mongoose methods to it and at that point, our query MIGHT look like:
+query.sort().select().skip().limit() and note that what allows us to do that, is that each of these methods that I mentioned here, will always
+return a new query that we can then chain on the next method and the next method and ... until we finally await the query, so that it can
+actually give us our docs.
+
+The next feature we're gonna implement, is not gonna use one of these query methods.
+
+Remember: In each feature we're chaining some methods on our query to make it more specific and at the end we await for executing that query
+and the chaining of methods on query is possible because each mongoose method for queries are returning a new query itself. So we can chain the
+next method and next method ... until we finally await the query.
+
+Remember: In the pagination feature, we shouldn't first check if the page and limit parameters in query string are exist.Because if even
+there isn't any page or limit in query string, we set them a default value. But if we check the existance of them first and they don't exist,
+we never reach the codes that set the default value.*/
+/* 101-19. Making the API Better Aliasing:
+We can provide an alias route to a request that might be popular. For example, we might want to provide a route, specifically for the
+five best cheap tours.If we'd use our regular route with the filters and sort and with all the features, the request would look like this:
+?limit=5&sort=-ratingsAverage,price and this query string says: Sort docs based on their highest ratingsAverage field and if two or more docs have equal
+ratingsAverage, then sort them based on their price field ascending (cheapest to most expensive).
+In case they have the same ratingsAverage, then we want the cheapest price possible, so we're gonna sort also by price.
+
+If we said: cheapest and best, we would have to sort by price first in ascending order and in case of tie in price, then the doc that has the
+highest ratingsAverage would come first.
+Important: In prior query string, if we reversed the order of those parameters, the results would be different. So it would be:
+?sort=price,-ratingsAverage and this query string says: Sort the results based on lowest price and if between two or more docs, have
+the same price, the one that has the highest ratingsAvg should come first and ... .
+
+Now let's say this is a request that is done all the time and we want to provide a route that is simple
+and easy to memorize for the user. So we need to create a new route. Let's call this new route, /top-5-cheap
+and we just need to make availabe a get request to this route.So we say .route().get()
+Now how we want to implement the top-5-cheap tours functionality? Well, in essence, what we want is actually
+still get all of the tours and make some changes (top 5 cheap of them) to them. So let's copy the tourController.getAllTours .
+We copied tourController.getAllTours , because it doesn't really make sense to rewrite all of the logic, but we need to
+apply some changes to that, right? So before calling the getAllTours route handler, we want to PREFILL some of the fields in
+the query string. Because we already know that the query string for this route would look like:
+?limit=5&sort=-ratingsAverage,price (with some more stuff).
+The solution is to run a middleware, before we run the getAllTours handler and that middleware function is gonna manipulate
+the query object that's coming in.
+So let's create aliasTopTours middleware. (This middleware needs to have the next arg (third arg) in order to call the next
+middleware or handler). With this arg, we call the next middleware that is in the middleware stack.
+
+In this new middleware, we need top 5 cheap tours.
+Remember: What we're doing in this middleware is basically prefilling some parts of query object that is related
+to top 5 cheap tours.So as soon as we arrive to getAllTours function, the query object is already prefilled even if
+the user didn't put any of these parameters in the query string.
+We need to pass everything to req.query, in string format, even numbers. Because the nature of query string
+is everything is string. So for example, I set req.query.limit to a string and not a number.
+Also make sure that in sort() method, you don't place any whitespaces. Because in query strings
+there isn't any whitespace. So also you shouldn't place any whitespaces when you're chainging the value of query string,
+yourself.
+Also let's specify some fields instead of all of them.
+So in essence, what we're doing in aliasTopTours() , is to prefilling the query string for the user, so that the user doesn't have to do it
+on his own.
+
+Important: Mongodb will search ENTIRE database and THEN sort the docs. Because .find() method, had come first and then limit just 5 results
+that are in top.
+
+Remember that still the whole router is still mounted onto that /tours route , so we have a kind of mini application on that /tours .
+
+102-20. Refactoring API Features:
+Currently, we implemented some features for getAllTours() and it's messy also imagine that we wanted to use these same features for another
+resource, it wouldn't be good to copy the code form getAllTours() and use it in other resources. So with a class that has one method for each of
+those api features or functionalities, if you have multiple resources for API, it would be very easy to use the same functionality
+that other resources have, because we have a reusable class, that we can use for each resource.
+
+The constructor() method in class gets automatically called as soon as we create a new object out of that class.
+
+The query that we pass to constructor() is the mongoose query and queryString is req.query(which is coming from the route) and we're
+passing the query in this constructor, because we don't want to query data, INSIDE this class.
+Because that would bound this class to the tour resource(a specific resource), but we want this class to be as reusable as possible.
+Also we don't have access to req.query in this class, because it's not a middleware and it's not in () of .route() in tourRoutes() .
+So we need to pass in the query string or req.query to this class.
+
+The goal of this class is when we create an object of this class, we chain the methods of this class on the object and this means all
+of the methods of this class is gonna run one after another. But don't worry, we have if statements in the beginning of most of this
+methods that check if some parameters in query string are exist, then if exist the method will run. But for filter() we don't need to
+wrap it in if statement. Because it doesn't need.
+
+After calling filter() , this.query will then have that new find() method on it, so it is stored on that this.query and later on we will have
+all those methods which all of them will manipulate this.query , so that in the end, this.query is the query that we want to execute.
+
+Important: So we always kept manipulating the query variable, whether we're in a route handler or in APIFeatures class. We kept adding more and more methods
+ to it until then, executed it by the end by awaiting on it.
+ We can add another query obj to query like this in a route handler:
+ query = query.skip().limit()
+ or like this in a class:
+ this.query = this.query.sort(sortBy);
+
+Tour.find() is a query object.
+Important: When we are chaining methods on something we must look at the result of previous chain or previous method. So when we have
+features.filter().sort() we must look at the result of features.filter() , because .sort() is chained on result of features.filter() .
+So we must keep attention on returning value of features.filter() in order to chain something else to features.filter() .
+But we know that features is an object that has access to filter and sort and other methods. So we can chain one method to on it and
+that's gonna work.But result of features.filter() right now, doesn't return the features object, so we can't again chain another method
+on it (in this case we can't chain .sort() on it.). So we must return the object in filter() in order to be able chain another method
+on it and also do this for sort(). So in methods of this class in the end we say: return this; with this code, we return the APIFeatures
+object, so we can chain methods of this class on the result of previous chaining.
+So remember that all of this chaining here, only works because after calling each of these methods, we always say: return this
+and this keyword in this case, is the object itself which has access to each of these methods and therefore making it possible to chain them.
+
+Remember: When you want to add some methods to a object (remember it must be an object. Because non-object can't have a method) you must SAVE
+those methods to that variable so we would have an assignment operation,
+so you can say:
+let <variable> = <some code>;
+<variable> = <variable>.method();
+
+I commented out these lines, because if user requests a page that does not really exist, is not really an error and
+the fact that there are no results, is enough for user to realize that the page that he was requested doesn't contain
+any data. So we don't need to throw an error to user. But I kept that code anyway in APIFeatures class.
+Also another reason for commenting out this piece of code is that in this code we are awaiting for our query, but
+the main goal is to add mongoose methods to query property and after creating an object and chaining the methods on
+objects, await the query property of object. So we can't await the query in the middle of our code.*/
+/* 103-21. Aggregation Pipeline Matching and Grouping:
+ */
 
 
 /*
