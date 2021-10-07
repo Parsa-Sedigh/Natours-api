@@ -9,9 +9,6 @@ const router = express.Router();
 
 // router.param('id', tourController.checkId)
 
-/* Remember: When you want to pick a name for a route, it's good to not use a verb, because the verb is kind of defined in HTTP method name.
-So for example for pick a name for our tour stats, we don't name it '/get-tour-stats' but '/tour-stats' . But it's not a problem
-that use verbs in name of route handler functions.Like getTourStats() .*/
 router
   .route('/top-5-cheap')
   .get(tourController.aliasTopTours, tourController.getAllTours);

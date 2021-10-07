@@ -1000,7 +1000,148 @@ Also another reason for commenting out this piece of code is that in this code w
 the main goal is to add mongoose methods to query property and after creating an object and chaining the methods on
 objects, await the query property of object. So we can't await the query in the middle of our code.*/
 /* 103-21. Aggregation Pipeline Matching and Grouping:
- */
+Aggregation middlewares:
+mongodb aggregation pipeline is a mongodb framework for data aggregation
+
+Mongodb aggregation pipeline: The idea is basically we define a pipeline, that all the docs from a certain collection, go through
+that pipeline, where in that pipeline, they are processed step by step in order to transform them into aggregated results.
+For example we can use aggregation pipeline in order to calculate averages or calucalating min and max values or we can calculate
+distances.
+For that, let's create a new handler function in tourController.js , because later on, we will then define a new route and then use that
+function for that. But we're gonna create that new route later.
+
+The full name of this route handler function is getTourStatistics().
+The aggregation pipeline is a mongodb feature, but mongoose of course gives us access to it, so that we can use it in the mongoose driver.
+
+First we use our Tour model in order to access to tours collection and then use aggregate() method on the model.
+Using an aggregation pipeline is a bit like doing a regular query. But the difference is that in aggregations, we can
+manipulate the data in a couple of different STEPS. So we must define these steps and for this task, we pass in an array that is
+called stages. So the docs will then pass through these stages one by one, step by step, in the defined sequence of stages that we defined.
+So each elements in that array would be one of the stages.
+
+In documentation of mongodb go to reference>aggregation pipeline stages
+
+Each one of the stages is an object and for the value of $<stage>, we would write a mongodb filter object.
+
+$match stage is to select or filter certain docs. In other words, it's just like the filter object in mongo.
+
+EX) In the query, we only want to select documents which have a ratingsAverage greater or equal than 4.5
+const stats = Tour.aggregate([
+  {
+    $match: {ratingsAverage: {$gte: 4.5}}
+  }
+]);
+
+Usually the $match stage is just a preliminary stage, to then PREPARE for the next stages which come ahead.
+
+$group stage allows us to group docs together using accumalators and an accumelator is for example, calculating an average.
+So if we have 5 tours and each of them has a rating, we can then calculate the average rating using $group.
+
+The first thing that we need to ALWAYS specify, is the _id, because this is where we're gonna specify what we want to group by?
+For nothhing(everything in one group), we pass null to _id
+
+
+For now, we specify null for _id in $group, because we want to have everything in ONE group.So then we can calculate the
+statistics for all of the tours together and not separate it by groups. But later, we will group docs based on different stuff.
+For example we can group by difficulty and then we can calculate the average for easy tours, the average for medium tours and ...
+Recap: We can group docs by one of our fields and we're gonna specify that field in value of _id inside $group object.But for
+now we want calculate the average for ALL the tours together in ONE big group. So for having one big group for all
+of our docs that are inside a collection (we are specifying that collection, when we are creating the model), we set _id to null.
+
+Now let's actually calculate the average rating and in order to do that, we specify a new field called avgRating and we passed it yet another
+object, because we wanna use a mongodb operator called $avg and we pass the name of the field to that operator and I know this sounds weird,
+but in order to specify the field(name of the field) which we want to calculate the average from, we need to use the dollar sign but in qutoes and
+then the name of the field, so:
+avgRating: {$avg: '$<name of the field we wanna calculate the average from>'}
+So it's weird but this is the way that the aggregation pipeline works.
+
+Now we need to add another route in our routes and name it /tour-stats and not /get-tour-stats , because the word 'get' is already defined in the
+http method, so no need to repeat it in the name.
+Remember: When you want to pick a name for a route, it's good to not use a verb, because the verb is kind of defined in HTTP method name.
+So for example for pick a name for our tour stats, we don't name it '/get-tour-stats' but '/tour-stats' . But it's not a problem
+that use verbs in name of route handler functions.Like getTourStats() .
+
+For the value of $avg, we specify the name of the field inside quotes not inside an object.
+Remember: We specified the avgRating and avgPrice arbitrary. In avgRating we are calculating average of all of the doc's average ratings.
+In other words, $ratingsAverage is for each doc but avgRating is just one value for all of the docs.
+
+Remember: <model>.aggregate() is gonna return an aggregate object (but for example, .find() would return a query),
+but we need to await it for it to actually comes back with the docs.
+
+As you can see, in the code for creating aggregation pipelines, we specify the fields in collections in this format:
+'$<name of field>'
+
+
+Now we want to calculate the total number of ratings that we have and also the total number of tours and let's put those properties before
+the average properties in pipeline.
+
+Important: For getting the number of docs in collection, we can add 1 to $sum for each of docs.So it would be:
+ <name of field(arbitrary-for example: numDocs)>: { $sum: 1 } , so in this example, $sum: 1 means add 1 for each of the docs that's gonna
+ go through this pipeline.
+ So at the end it would be total number of docs.
+ So for each of the docs that is gonna go through this pipeline, 1 will be added to the name of the property. In our code, the
+ name of property is numTours.
+
+So totalStats is the statistics for all the tours docs TOGETHER.
+
+Let's group our results based on different fields.
+Important: When we set the value of _id to a value other than null, we basically say: Group docs by that specified field in
+ value of _id, so each doc that has the same value of _id would go inside one group. So when _id: '$difficulty', each doc
+ that has a difficulty of easy, would go inside same group and for each group, mongoose will calculate the specified properties
+ that are in further. For example it would calculate the numTours and avgRating properties for each group of difficulties.
+ So: _id: '$difficulty'
+With this example, we have the docs grouped by similar values that they have on difficulty field. So docs that have easy value for
+difficulty field would go together(in this case, because we have an aggregation properties, all the docs that have easy difficulty
+would their price and ..., be calculated in a grouped object and ...). Look at the response of postman for this route(/api/v1/tours/tour-stats).
+
+We can use this route to get all kinds of insights into our data, for example the easy tours has the poorest rating and ... .
+
+if you group the fields based on ratingsAverage, so:: _id: '$ratingsAverage', you can see that we have 2 tours(numTours: 2) with the rating
+of 4.5(_id: 4.5 - because we set the _id to be '$ratingsAverage'), 2 tours that have 4.5 as averageRating and ... .
+
+We can make the name of the field that we group by(the string that we pass to _id in $group operator), to become upper cased, by using $toUpper
+operator. So the names would become: _id: EASY, _id: DIFFICULT and ... .
+
+$match is like a precondition that docs which match that condition would enter the next stages.
+
+We can also add another stage that sits besides of stages like $match and $group and it's called $sort . In the object we pass to
+$sort, we need to specify which field we want to sort this by?
+So it would be an object like prior stages which sits in the array that we pass in to aggregate() method. In $sort stage, we need to
+use the the field names that we specified in the $group stage, we can no longer use the old names because at this point they are already gone, they
+no longer exist. So at this point in the aggregation pipeline, we already have some docs that their field names are the names that we passed in
+$group and so if you for example wanna sort by average price, the name of the average price field is now avgPrice.
+
+So you must use the new field names (if they exists). Because when we're using $group , we may use some new field names for property keys.
+In this case our actual field name is averagePrice in db, but we used avgPrice in $group.So we must use the new field name which is avgPrice in $sort stage.
+In $sort stage, 1 means ascending(lowest one comes first).
+
+Remember: We use $sort stage for more than one groups. So in our code it's none sense to use $sort for totalStats. Because
+it would have just one group of data.
+
+We can also repeat stages.
+
+$ne is a new operator and it's meaning is not equal. In statsBasedOnDifficulty basically we're excluding the group that
+has the _id set to EASY(so we're selecting all the docs that are not EASY(why EASY and not easy? Because remember we set the value of
+_id field to be $toUpper with $upper operator)).
+
+In our example, we matched(used $match) once before we actually did the group and then we matched once we were ready doing the grouping.*/
+
+/* 104-22. Aggregation Pipeline Unwinding and Projecting:
+
+this.pipeline() is simply the array that we passed to the .aggregate() method in route handlers that are responsible for the
+route that the user sent request and are using .aggregate() method in themselves. For example if a user sends a request to a
+route that it's handler functions are using .aggregate() in themselves, this aggregate middleware would run.
+
+Now because this.pipeline() in we have exactly the pipeline that we specified in the route handler, we can filter out the secret
+tours by adding another $match stage, right at the beginning of this pipeline array.
+Remember that this.pipeline() in an aggregation middleware is an array and we want to add another element to the BEGINNING
+of this array. So we must use unshift() which is a method for arrays. Why at the beginning? Because we want to execute further
+stages based on the public tours and not secret tours, so we MUST add that stage at the beginning. So basically we're
+removing all the docs that have secretTour set to true from results.
+
+We have also model middleware.
+So mongoose middlewares are cool stuff that we can add to our models.For example we could implement instance methods which are
+methods that will be available on every document after being queried.*/
 
 
 /*

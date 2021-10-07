@@ -130,21 +130,6 @@ tourSchema.post(/^find/, function(docs, next) {
   next();
 });
 
-/* Aggregation middlewares:
-* this.pipeline() is simply the array that we passed to the .aggregate() method in route handlers that are responsible for the
-* route that the user sent request and are using .aggregate() method in themselves. For example if a user sends a request to a
-* route that it's handler functions are using .aggregate() in themselves, this aggregate middleware would run.
-*
-* Now because this.pipeline() in we have exactly the pipeline that we specified in the route handler, we can filter out the secret
-* tours by adding another $match stage, right at the beginning of this pipeline array.
-* Remember that this.pipeline() in an aggregation middleware is an array and we want to add another element to the BEGINNING
-* of this array. So we must use unshift() which is a method for arrays. Why at the beginning? Because we want to execute further
-* stages based on the public tours and not secret tours, so we MUST add that stage at the beginning. So basically we're
-* removing all the docs that have secretTour set to true from results.
-*
-* We have also model middleware.
-* So mongoose middlewares are cool stuff that we can add to our models.For example we could implement instance methods which are
-* methods that will be available on every document after being queried.*/
 tourSchema.pre("aggregate", function(next) {
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
   console.log(this.pipeline());

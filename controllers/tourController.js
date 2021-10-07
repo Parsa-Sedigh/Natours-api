@@ -278,60 +278,6 @@ exports.aliasTopTours = (req, res, next) => {
   next();
 };
 exports.getTourStats = catchAsync(async (req, res, next) => {
-  /* The full name of this route handler function is getTourStatistics(). First we use our Tour model in order to access to
-  tours collection and then use aggregate() method on the model.
-  Using an aggregation pipeline is a bit like doing a regular query. But the difference is that in aggregations, we can
-  manipulate the data in different STEPS. So we must define these steps and for this task, we pass in an array that is
-  called stages. So the docs will pass through these stages one by one, step by step in the defined sequence of stages.
-  So each elements in that array would be a stage. Each one of the stages is an object and for the value of $<stage>, we would
-  write a mongodb filter object.
-  $match stage is for select or filter certain docs.In other words, it's just like the filter object in mongo.
-  Usually the $match stage is just a preliminary stage, to then PREPARE for the next stages which come ahead.
-  $group stage allows us to group docs together using accumalators and an accumelator is for example, calculating the average.
-  So if we have 5 tours and each of them has a rating. We can calculate the average rating using $group.
-
-  For now, we specify null for _id in $group, because we want to have everything in ONE group.So then we can calculate the
-  statistics for all tours together and not separate them by groups. But later, we will group docs based on different stuff.
-  For example we can group by difficulty and then we can calculate the average for easy tours, the average for medium tours and ...
-  Recap: We can group docs by one of our fields and we're gonna specify that field in value of _id inside $group object.But for
-  now we want calculate the average for ALL the tours together which are inside a big group. So for having one big group for all
-  of our docs that are inside a collection (we are specifying that collection, when we are creating the model).
-
-  For the value of $avg, we specify the name of the field inside quotes not inside an object.
-  Remember: We specified the avgRating and avgPrice arbitrary. In avgRating we are calculating average of all of the doc's average ratings.
-  In other words, $ratingsAverage is for each doc but avgRating is just one value for all of the docs.
-
-  Remember: <model>.aggregate() is gonna return an aggregate object (but for example, .find() would return a query),
-   but we need to await it.
-
-  As you can see, in the code for creating aggregation pipelines, we specify the fields in collections in this format:
-  '$<name of field>'
-
-  Important: For getting the number of docs in collection, we can add 1 to $sum for each of docs.So it would be:
-   <name of field(arbitary-for example: numDocs)>: { $sum: 1 } , so in this example, $sum: 1 means add 1 for each of the docs.
-   Sp at the end it would be total number of docs.
-   So for each of the docs that is gonna go through this pipeline, 1 will be added to the name of the property. In our code, the
-   name of property is numTours.
-
-  So totalStats is the statistics for all the tours docs TOGETHER. But let's group our results based on different fields.
-  Important: When we set the value of _id to a value other than null, we basically say: Group docs by that specified field in
-   value of _id, so each doc that has the same value of _id would go inside one group. So when _id: '$difficulty', each doc
-   that has a difficulty of easy, would go inside same group and for each group, mongoose will calculate the specified properties
-   that are in further. For example it would calculate the numTours and avgRating properties for each group of difficulties.
-
-  $match is like a precondition that docs which match that condition would enter the next stages.
-
-  We can also add another stage that sits besides of stages like $match and $group and it's called $sort . So it would
-  be an object like prior stages which sits in the array that we pass in to aggregate() method. In $sort stage, we need to
-  use the the fields that we specified in the $group stage But you must use the new field names if they exists. Because
-  when we're using $group , we may use some new field names for property keys. In this case our actual field name is
-  averagePrice in db, but we used avgPrice in $group.So we must use the new field name which is avgPrice in $sort stage.
-  In $sort stage, 1 means ascending.
-  Remember: We use $sort stage for more than one groups. So in our code it's none sense to use $sort for totalStats. Because
-  it would have just one group of data.
-  We can also repeat stages.
-  $ne is a new operator and it's meaning is not equal. In statsBasedOnDifficulty basically we're exculding the group that
-  has the _id set to EASY.*/
   const stats = await Tour.aggregate([
     {
       $match: { ratingsAverage: { $gte: 4.5 } },

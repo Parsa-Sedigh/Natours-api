@@ -1572,10 +1572,8 @@ You can see the errors in code in PROBLEMS tab of terminal in vscode.*/
 
 
 
-/* Mongodb aggregation pipeline: The idea is basically we define a pipeline, that all docs from a certain collection, go through
-that pipeline, where in that pipeline, they are processed step by step in order to transform them into aggregated results.
-For example we can use aggregation pipeline in order to calculate averages or min or max value of multiple fields and ...
-* */
+
+
 
 /* Just like express, mongoose also has the concept of middleware and first type of them in mongoose called document middleware.
 * So we can use mongoose middlewares to make something happen between two events. For example each time a new document is saved to
