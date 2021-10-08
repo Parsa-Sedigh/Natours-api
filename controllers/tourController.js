@@ -344,60 +344,6 @@ exports.getTourStats = catchAsync(async (req, res, next) => {
   });
 });
 exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
-  /*Problem: Implement a function that calculates the busiest month of a given year.
-So basically by calculating how many tours start in each month of the given year.
-First create the function and after this create a route for this function. Let's call it '/monthly-plan'
-Remember: For the things that you want to pass in to .aggregate() method, first you pass in an array and then in that array
-we pass in one object for each of the stages we want.
-Actually we want to count how many tours exist for each of the months in the given year.
-Learn: $unwind stage deconstruct an array field from the docs and then outputs one document for each element of the array and in
- our problem we want to have one tour for each of the elements in startDates array field. So for the value of $unwind we specify the
- field which is an array and we want to deconstruct that array and make each of the elements in that array, a separate document.
-
-When we use $unwind on a field specified as the value of $unwind, in results, we longer would have that field as an array and
-now we have each element in startDates array as a separate field. After $unwind stage, we must select the documents for the year that
-user was passed in. So the results we want to send to user must have a same year that user passed in.So we can use $match to send the
-results that have a same year which user requested. So we want the tours in the year that user requested. So the startDates of these
-tours must be in the year that user requested in other words, the startDates can be from first day of year until last day of year.
-
-Remember: The value of $group stage must be an object which we have a field called _id in that object and the docs will group together
-based on this field. So Learn: $match is just for select some docs based on some conditions.
-
-Important: The key of a key-value pair in stage objects can not be the name of a field that has a $ and quotes around it.
-
-Important: The _id field would be usually in $group stage and maybe other stages. In $group with this field we can group docs that have the same field
- which is specified in the value of _id.
-
-In this problem we want to group docs based on their month. BUT currently we have the ENTIRE date, not only the month. So we have the year, the month,
-the day and even the hour and ... .But we want to have only the month to group them. For this task we can use another new mongo operator.
-It's called $month which returns the month as a number.So it would basically EXTRACT the month out of our date. For value of
-this $month operator, we pass it the name of the field that we want to extract the month from it.
-Now after soecifying the _id for grouping, we can specify the real information that we want for each of those groups is how many
-tours START in that month? We can count the amount of tours that have a certain month.
-
-Learn: In $group stage, after specifying the field that you want to group docs based on that field, you should specify the
- data that you want to see in EACH GROUP. That data could be the number of docs in each group, or average of a field in each group,
- or highest (maximum) of a field in each group and ... . In this case we're counting number of docs in each group and the arbitrary key name
- for that field is numTourStarts .
-After calculating number of docs in each group, we need some more information about which tours are in this group and not just the
-number of docs in each group. So we can specify an arbitrary name for the key that we want to show the information of tours (which I named it tours)and
-then because possibly we have more than 1 tour in each group, we must show their information in an array, right? Because if you
-don't want to use an array, for this, how could you show the information of 2 or 3 or ... tours in one field? So for creating an array,
-so we use $push to push the name field of each document that goes through this pipeline for EACH GROUP.
-
-Now we want to change the name of _id field. Which we haven't access to that directly, it's a bit tricky. The solution is we can add another
-field which has the exact value of _id (the value of _id field is '$_id') in each group but with a different name and after creating that
-new field which is gonna be exist for each group, we can delete _id field from each group and now we have a new field which has the
-same value for each group.
-In $addFields stage, we must specify the NAME of the field that we want in the key of $addFields object and the value of that key is the actual value
-of that newly created field.
-
-Now we need to delete the _id key-value pair from the groups. So we can use $project stage. For the value of $project, we give it an object
-and in this object we can exclude or include some fields.
-
-In the value for $sort stage, the key name is the field name that we want to sort docs based on it and the value of that key is 1 or -1
-1 is for ascending.
-In this case and in $limit stage, we specify we want to have 12 results (in this case, it would say that we want just 12 groups.)*/
   // try {
   //     const year = req.params.year * 1;
   //     const plan = await Tour.aggregate([

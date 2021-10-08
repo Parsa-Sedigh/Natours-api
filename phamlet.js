@@ -1574,47 +1574,6 @@ You can see the errors in code in PROBLEMS tab of terminal in vscode.*/
 
 
 
-
-/* Just like express, mongoose also has the concept of middleware and first type of them in mongoose called document middleware.
-* So we can use mongoose middlewares to make something happen between two events. For example each time a new document is saved to
-* the db, we can run a function between the save command is issued and actual saving of the doc or also AFTER saving the doc and that's
-* why a mongoose middleware is also called pre and post hooks.So again because we can define functions to run BEFORE or AFTER a certain
-* event, like saving a data to db.
-* There are 4 types of middlewares in mongoose: document, query, aggregate and model.
-* Learn: Document middleware can act on the currently processed document. So just like virtual properties we define a middleware on a
-*  schema and in our model file.
-*  */
-
-/* NDB (node debugger): Is a npm package. So npm i ndb --global (you should install it as a global package). But if you want to
-* install it locally, you can install it as a dev dependency.
-* After installation add a new script in package.json and that script would be sth like: "ndb <entry point file>" and this is gonna work
-* no matter if you installed ndb locally or globally. Now you can run this script instead of nodemon, because ndb will start the server
-* as well and it would try to do this in the same port of nodemon command so it's not gonna work. So we need to finish the command that
-* is currently running and then run debug script.
-*
-* You notice that in app variable which is the express application variable, we have a function(method) called _router and it has a
-* property called stack. Which is the middleware stack that we have in our application.
-*
-* In ndb we can set a breakpoint on one of our route handler functions and then send the request to the route that this function is
-* responsible for it and see the variables in it.
-* So we find out that when we set a breakpoint on a line of code, our code will stop running at that line where we defined a breakpoint.
-* In other words our code will froze or stuck at that point. So if a user just sends a request to api, if that line must be executed
-* in order to send a response to the user, it won't and simply the user won't get any response and request-response cycle will stuck
-* at that line. Now if you want to resume the execution of code after that breakpoint, you can use F8 (run script execution) button.
-* Which will continue the execution of code until next breakpoint(if there isn't any breakpoint after this breakpoint, it will run
-* the code till end.)
-*
-* Learn: Remember that when you set a breakpoint earlier in the code , if you for example send a request to where the code that has a
-*  breakpoint must run, the response won't back until you remove that breakpoint. Because we basically stop the execution of further code in
-*  breakpoints. Right?
-*
-* In ndb, the step tool will execute the next line of code after breakpoint. For example if our breakpoint was on this line:
-* ...
-* .limitFields()
-* ...
-*
-* If we use step, the next line is the code that is inside the limitFields() method. So with using step tool on this breakpoint, we will
-* go to the first line of that method (the lines that this method has defined)*/
 /* We need to handle our errors in a central place in our app. What we did up until this point, was to simply send back an error
 message as JSON in each route handler in case something went wrong.
 
@@ -1647,98 +1606,98 @@ We need to handle these errors in order to prepare our application for these cas
  send the errors down to the error handler which will then decide what to do with those errors.
   */
 /* A better way of catching errors in async functions:
-* Right now, in all of our async functions, we have try {}catch() {} blocks. Because that is how we usually catch errors in
-* async functions by using a try catch block. But that makes our code messy. So for example, the goal of a function like createTour is
-* to just execute a code that creates a tour and not mess around with error handling. But we are using try catch blocks which are
-* for error handling and this is not good. Also we have a lot of duplicate code because in each of our handlers, we have quite a
-* similar catch block. So in all of those blocks, all we're doing is to send an error or fail response and that response would actually
-* not even be sent here and it would be sent from our global error handling middleware. So we need 2 things to fix.
-* But first let's fix those try catch blocks in our async functions because they aren't ideal. The solution is to take out try catch
-* block, out of the async functions and put them on a higher level in another function. So basically what we're gonna do is to
-* create a function and then wrap the async functions which are using try catch blocks into that newly created function and that function
-* is catchAsync .We called it like this, because the goal of this function is to simply catch our async errors and inside this function
-* we will pass in a function.
-* After creating catchAsync function, we will wrap all of the definitions of the functions that we want to pass in to this catchAsync
-* function. Because well, as I said we must pass in a function to catchAsync function.
-*
-* Question: When we're calling fn() in the catchAsync() function, how we call the incoming function (fn) by passing it req, res and next?
-* Why we actually have access to req, res and next inside catchAsync() ? Right now, we haven't req,res and next inside catchAsync() function
-* But we will fix that.
-*
-* Important: Right now if any of your middlewares in tourController or userController doesn't have the next parameter. Pass it to them.
-*  Because we need to call next(), in order to pass the error into () of next() and therefore go to our global error handler middleware
-*  by calling that next(error) with error inside it's parentheses.
-*
-* Now, as you can see we're passing an async function to fn() function and we're calling that async function inside of catchAsync() .
-* But as you know, when we want to call an async function, we must await for it. Right? We can't just simply call the async function like
-* asyncFunction() . We must use .then() and await for it.
-*
-* After using .catch() on calling the incoming function, we can remove try catch blocks and just hold the code that is inisde
-* try block. Because again, the code that is inside catch blocks, transferred to fn(...).catch(...) in the catchAsync() function.
-* In catchAsync() function, it's easier to use .catch() on returned promise of fn(...) than using catch(err) {...} block.
-* In other words, we transformed catch block into a .catch() method on returned promise.
-*
-* Now there are actually two big problems: First is that fn(req, res, next) has no way of knowing req and res and next. So right now
-* the incoming function or fn don't know what is req, res and next. Because we did not pass them into catchAsync function therefore
-* there's really no way for catchAsync function to know these variables and their values.
-* The second problem is when we are calling catchAsync with parentheses, inside of catchAsync function itself, we are RIGHT AWAY
-* that incoming function and that's not how it is supposed to work. So createTour() function should be really a function but not
-* the result of calling another function. (As you can see the createTour function is result of calling catchAsync(createTour function definition)
-* ) . So the createTour() function shouldn't be called and instead it should sit and wait until express calls it and we know that
-* express will call this function as soon as someone hit the route that needs this createTour function to be executed.
-* Again in other words, we are calling createTour() function manually by calling it by another function which is catchAsync() and pass
-* createTour function into catchAsync() which this catchAsync() function would call createTour() (basically catchAsync function would
-* call any function that we pass that function to it and in this case that function we pass to catchAsync is createTour and therefore
-* createTour would be called manually by us and that's not good because we want to express itself called createTour function not us!)
-* and this isn't good.
-* The solution is to make catchAsync() function return another function which would be assigned to createTour and that returned function from
-* catchAsync, can then later be called WHEN IT'S NECESSARY BY EXPRESS. In other words that returned function from catchAsync
-* is gonna be the function that express would call when necessary. So in catchAsync let's say:
-* return (req, res, next) => {
-* TODO ???????? I don't understand
-* }
-*
-* Also we can simplify err=> next(err) with next. So it would be :
-* return (req, res, next) => {
-* fn(req, res, next)
-          .catch(next);
-* }
-*
-* Recap: In order to get rid of try catch blocks in createTour function, we wrapped createTour async function inside of catchAsync() function
-* that we just created.The catchAsync() function will then return a new anonymous function and this anonymous function will be
-* assigned to createTour function and this new anonymous function will then called as soon as the new tour should be created
-* using the createTour handler function and that's why this new anonymous function has the exact signature as createTour function.
-* Signature means: (req, res, next) . Now what this new anonymous function will then do is that it will call the function that
-* we passed to catchAsync() (in our case that function we passed was createTour) and then it will execute all the code of that
-* passed in function and since the passed in function is an async function, it will return a promise and therefore there's an error
-* in that returned promise, or in other words, in case that promise gets rejected, we can catch that error using the catch method which is
-* available on all of the promises and in the end, that is the catch() method which will pass the error of createTour function into the next
-* function, which that error will end up in our global error handling middleware.
-*
-* The reason of creating the catchAsync function is to catch all of the errors of our handler functions in one place and not catch
-* the error of each function in itself and therefore have bunch of catch blocks which all of them are doing kind of same work which is
-* to get the operational errors of that handler. So we transfer all of these catch snippets into one function which is called catchAsync.
-* Now why we must pass in the entire function to catchAsync function? Because ??TODO
-*
-* So now if we create a new tour and then some errors happen, then that error should catched in the catch method inside of catchAsync()
-* function and the error will sent to our global error handling middleware and that middleware will send back the response.
-*
-* Now if we try to create a new tour with some errors, for example don't send all of the required fields for creating a tour,
-* we will get back a 500 internal server error for statusCode because the error that just sent to the error handler middleware, didn't
-* have any statusCode property. So we must fix that.
-* Now let's export the catchAsync function into it's own file.
-*
-* We could wrap the route handler functions inside catchAsync(), right in the route files instead of wrapping them in controller
-* files and that would have the same result. For example:
-* router.route('/tour-stats').get(catchAsync(tourController.getTourStats));
-* but we didn't do it this way, because if we use this approach, we have to remember which of these functions are async functions.
-* Because remember we use catchAsync() function on async functions, right?
-*
-* Npw we want to implement 404 error. Because for example when someone enters a wierd ObjectId like ddff in url for getting a tour,
-* of course he would get an error that says: cast to ObjectId failed. But when someone enters a valid ObjectId but that ObjectId doesn't
-* exist in our database, the result of our api would be:"tour": null . which is not good.We want it to show a 404 error message. So we must
-* add some stuff to getTour handler function. It would be: if(!tour) {...}
-* */
+Right now, in all of our async functions, we have try {}catch() {} blocks. Because that is how we usually catch errors in
+async functions by using a try catch block. But that makes our code messy. So for example, the goal of a function like createTour is
+to just execute a code that creates a tour and not mess around with error handling. But we are using try catch blocks which are
+for error handling and this is not good. Also we have a lot of duplicate code because in each of our handlers, we have quite a
+similar catch block. So in all of those blocks, all we're doing is to send an error or fail response and that response would actually
+not even be sent here and it would be sent from our global error handling middleware. So we need 2 things to fix.
+But first let's fix those try catch blocks in our async functions because they aren't ideal. The solution is to take out try catch
+block, out of the async functions and put them on a higher level in another function. So basically what we're gonna do is to
+create a function and then wrap the async functions which are using try catch blocks into that newly created function and that function
+is catchAsync .We called it like this, because the goal of this function is to simply catch our async errors and inside this function
+we will pass in a function.
+After creating catchAsync function, we will wrap all of the definitions of the functions that we want to pass in to this catchAsync
+function. Because well, as I said we must pass in a function to catchAsync function.
+
+Question: When we're calling fn() in the catchAsync() function, how we call the incoming function (fn) by passing it req, res and next?
+Why we actually have access to req, res and next inside catchAsync() ? Right now, we haven't req,res and next inside catchAsync() function
+But we will fix that.
+
+Important: Right now if any of your middlewares in tourController or userController doesn't have the next parameter. Pass it to them.
+ Because we need to call next(), in order to pass the error into () of next() and therefore go to our global error handler middleware
+ by calling that next(error) with error inside it's parentheses.
+
+Now, as you can see we're passing an async function to fn() function and we're calling that async function inside of catchAsync() .
+But as you know, when we want to call an async function, we must await for it. Right? We can't just simply call the async function like
+asyncFunction() . We must use .then() and await for it.
+
+After using .catch() on calling the incoming function, we can remove try catch blocks and just hold the code that is inisde
+try block. Because again, the code that is inside catch blocks, transferred to fn(...).catch(...) in the catchAsync() function.
+In catchAsync() function, it's easier to use .catch() on returned promise of fn(...) than using catch(err) {...} block.
+In other words, we transformed catch block into a .catch() method on returned promise.
+
+Now there are actually two big problems: First is that fn(req, res, next) has no way of knowing req and res and next. So right now
+the incoming function or fn don't know what is req, res and next. Because we did not pass them into catchAsync function therefore
+there's really no way for catchAsync function to know these variables and their values.
+The second problem is when we are calling catchAsync with parentheses, inside of catchAsync function itself, we are RIGHT AWAY
+that incoming function and that's not how it is supposed to work. So createTour() function should be really a function but not
+the result of calling another function. (As you can see the createTour function is result of calling catchAsync(createTour function definition)
+) . So the createTour() function shouldn't be called and instead it should sit and wait until express calls it and we know that
+express will call this function as soon as someone hit the route that needs this createTour function to be executed.
+Again in other words, we are calling createTour() function manually by calling it by another function which is catchAsync() and pass
+createTour function into catchAsync() which this catchAsync() function would call createTour() (basically catchAsync function would
+call any function that we pass that function to it and in this case that function we pass to catchAsync is createTour and therefore
+createTour would be called manually by us and that's not good because we want to express itself called createTour function not us!)
+and this isn't good.
+The solution is to make catchAsync() function return another function which would be assigned to createTour and that returned function from
+catchAsync, can then later be called WHEN IT'S NECESSARY BY EXPRESS. In other words that returned function from catchAsync
+is gonna be the function that express would call when necessary. So in catchAsync let's say:
+return (req, res, next) => {
+TODO ???????? I don't understand
+}
+
+Also we can simplify err=> next(err) with next. So it would be :
+return (req, res, next) => {
+fn(req, res, next)
+        .catch(next);
+}
+
+Recap: In order to get rid of try catch blocks in createTour function, we wrapped createTour async function inside of catchAsync() function
+that we just created.The catchAsync() function will then return a new anonymous function and this anonymous function will be
+assigned to createTour function and this new anonymous function will then called as soon as the new tour should be created
+using the createTour handler function and that's why this new anonymous function has the exact signature as createTour function.
+Signature means: (req, res, next) . Now what this new anonymous function will then do is that it will call the function that
+we passed to catchAsync() (in our case that function we passed was createTour) and then it will execute all the code of that
+passed in function and since the passed in function is an async function, it will return a promise and therefore there's an error
+in that returned promise, or in other words, in case that promise gets rejected, we can catch that error using the catch method which is
+available on all of the promises and in the end, that is the catch() method which will pass the error of createTour function into the next
+function, which that error will end up in our global error handling middleware.
+
+The reason of creating the catchAsync function is to catch all of the errors of our handler functions in one place and not catch
+the error of each function in itself and therefore have bunch of catch blocks which all of them are doing kind of same work which is
+to get the operational errors of that handler. So we transfer all of these catch snippets into one function which is called catchAsync.
+Now why we must pass in the entire function to catchAsync function? Because ??TODO
+
+So now if we create a new tour and then some errors happen, then that error should catched in the catch method inside of catchAsync()
+function and the error will sent to our global error handling middleware and that middleware will send back the response.
+
+Now if we try to create a new tour with some errors, for example don't send all of the required fields for creating a tour,
+we will get back a 500 internal server error for statusCode because the error that just sent to the error handler middleware, didn't
+have any statusCode property. So we must fix that.
+Now let's export the catchAsync function into it's own file.
+
+We could wrap the route handler functions inside catchAsync(), right in the route files instead of wrapping them in controller
+files and that would have the same result. For example:
+router.route('/tour-stats').get(catchAsync(tourController.getTourStats));
+but we didn't do it this way, because if we use this approach, we have to remember which of these functions are async functions.
+Because remember we use catchAsync() function on async functions, right?
+
+Npw we want to implement 404 error. Because for example when someone enters a wierd ObjectId like ddff in url for getting a tour,
+of course he would get an error that says: cast to ObjectId failed. But when someone enters a valid ObjectId but that ObjectId doesn't
+exist in our database, the result of our api would be:"tour": null . which is not good.We want it to show a 404 error message. So we must
+add some stuff to getTour handler function. It would be: if(!tour) {...}
+*/
 /* Important: We created appError class in order to create the errors with that custom class. Which that class has some properties
     which are very custom like isOperational property. So we created this class because for example isOperational property doesn't
     exist in Error built-in class. So this class is some kind of error constructor for us that we can produce our own errors with the
@@ -1835,7 +1794,7 @@ request, obviously!), but if you want to say: I don't want to execute further co
 *  SET NODE_ENV=production&& nodemon server.js instead of "SET NODE_ENV=production && nodemon server.js"
 *  Because if you use the second one, the value of process.env.NODE_ENV becomes production + " " instead of production and the
 *  comparison of if (process.env.NODE_ENV === 'production') always returns false. But if you use the first one npm script,
-*  that comparison returns true. Also it's a good practice to use process.env.NODE_ENV.trim() when you want to do comparisons between
+ *  that comparison returns true. Also it's a good practice to use process.env.NODE_ENV.trim() when you want to do comparisons between
 *  process.env.NODE_ENV and production or development or ....*/
 /* Now let's handle the error that occurs when we try to create duplicate fields for fields that they are supposed to be unique.
 *  For example we try to create a tour with a name which that name exists. Currently the error that comes from this situation
