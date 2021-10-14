@@ -104,22 +104,7 @@ exports.getAllTours = catchAsync(async (req, res, next) => {
 
   query = query.skip(skip).limit(limit); */
 
-  /* Execute query:
-
-  Why we didn't use
-  if (!tour) {
-  return next(new AppError('No tour found with that ID.', 404));
-  }
-  In this function?
-  When 0 results found, for example there are no results matching for a filter or because the page was requested that doesn't
-  exist, then of course we could consider sending a 404 error and saying that the data was not found. But that error is not
-  entirely correct in this specific request. Because there was really no error. I mean the request was correctly received and then
-  the database correctly searched for the tours and found 0 results and so these 0 records are exactly what we're gonna send back along
-  with 200 HTTP status code. So again we consider there can't be really an error, when a user requests ALL of the tours. Unless of course
-  there are some failures in the database  or something like that and in those cases mongoose will AUTOMATICALLY throw an error which
-   would catched by our catchAsync function which it's responsibility is to catch errors of our functions in one place instead of
-   writing catch blocks in each of our functions and then catchAsync function would send that error to our global handling middleware
-   by saying next(err) .*/
+  /* Execute query:*/
   //TODO Tour also works for first arg of new APIFeatures WHY??? and also in filter method of class, we are AGAIN using .find() on model???
   const features = new APIFeatures(Tour.find(), req.query);
   features.filter().sort().limitFields().paginate();
@@ -154,11 +139,6 @@ exports.getTour = catchAsync(async (req, res, next) => {
   // }
   const tour = await Tour.findById(req.params.id);
   if (!tour) {
-    /* In JS, null is a falsey value or in other words a value that will convert to false. So if there is no tour, we want
-    to just straight into our global error handler middleware. So we must use next(error) .
-    Also it is very crucial to say return here. Because we don't want to execute any further code after creating this error.
-    As soon as next() receives something, it assumes that is an error and will jump straight into global error handling
-    middleware which this middleware will send the response from our API. */
     return next(new AppError('No tour found with that ID.', 404));
   }
 
