@@ -38,7 +38,9 @@ const handleCastErrorDB = (err) => {
 };
 
 const handleDuplicateFieldsDB = (err) => {
-
+  /* Instructor's code:
+  const value = err.message.match(/(["'])(\\?.)*?\1/)[0];
+    ...*/
   /* The value of field which is duplicated: */
   const value = err.keyValue.name;
   const duplicatedField = Object.keys(err).find(key => err.keyValue[key] === value);
@@ -46,11 +48,10 @@ const handleDuplicateFieldsDB = (err) => {
   const message = `Duplicate value ${value} in ${duplicatedField} field. Pleas use another value for that field.`;
   return new AppError(message, 400);
 };
+
 const handleValidationErrorDB = (err) => {
   const errors = Object.values(err.errors).map((el) => el.message);
 
-  /* We use join('. ') to separate the error messages with a dot and a space between each of them. So it would be:
-   <error message1>. <error message2>. <error message3> */
   const message = `Invalid input data. ${errors.join('. ')}`;
   return new AppError(message, 400);
 };

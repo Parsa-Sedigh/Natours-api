@@ -1594,164 +1594,59 @@ request, obviously!), but if you want to say: I don't want to execute further co
 
 
 
-/* Now let's handle mongoose's validation errors and make them customized.
-* For example you want to update a tour with a difficulty of insane and the validator doesn't let this.
-* So enum is a validator. Or send a field that it's value is very short.
-* When some validators throw errors, in response we would have a property named error and in that error we have an object called
-* errors and in that errors object, for every field that it's validator threw an error, we have the name of that field and the
-* values for the name of each field that it's validator threw an error are some properties which we interested in properties property,
-* which it's value is an object that have message property and path property which is the name of the field and ... .
-* Message property is the message that we defined in the mongoose schema. Remember: We find out all of these objects in development
-* mode and you can't see any of these objects in production mode, because in production mode we want to send that concatenated string
-* which has all of those messages put together.
-* Our goal is to extract the message properties from properties object which is in an object that it's name is the name of
-* each field and all of them are in errors object and put all of those messages in one string.
-* Solution: We need to loop over all of the objects and then extract all of the error messages into a new array.
-* Learn: In js, we use Object.values() in order to loop over the elements of an object.
-*
-* In our code, errors variable would be an array of all of the error messages.
-* When we say: Object.values(err.errors) it would return an array of objects that each object's name is the field name which have validator errors.
-* If in the requested fields there were errors in difficulty field and name field, the result of Object.values(err.errors) ,
-* would be an array of difficulty object and name object.
-*
-* Learn: The ValidationError s are created by mongoose. Just like the CastErrors, so they look similar.
-*
-* So:
-* Now if you found another error that you want to mark it as operational error, you just need to use an if statement to catch those
-* types of errors and in that if statement, you need to call a special function which make those kind of errors operational by
-* returning a new instance of AppError() class and also create a message for those kind of errors and pass it to new AppError() and
-* a status code must also pass in to return new AppError() and then sendErrorProd() will send that error to the client.
-*
-* Still it would be some errors that are completely out of mongo or express and we need to prepare for them.*/
-/* At this point, we successfully handle errors in our express application by passing operational async errors down into a global
-* error handling middleware. That middleware then sends relevant relevant error messages back to the client depending on type of
-* error that occurd. However, there might also occur errors outside of express and a good example for that kind of errors in our
-* current application is the mongodb database connection. So imagine the database is down for some reason or for some reason we can't
-* log in and in theses cases there are errors that we need to handle as well. But they didn't occur INSIDE of the express application
-* so the global error handler that we implemented won't catch these errors. For test, let's change our mongodb password in .env
-* file. Because that way, we're not gonna able to connect to db. Now save it and you would get an error, in server.js file and you would
-* get: unhandled promise rejection.
-* An unhandled promise rejection, means that somewhere in our code, there is a promise that get rejected.But that rejection has not
-* been handled anywhere. Also in error, you would see a deprecation warning. Which says in the future, unhandled rejections will
-* simply exit the node program that's running, which may not always what you want.
-* Now all we have to do is when we are using mongoose.connect() and after using .then() on it, use .catch() . Now with that .catch()
-* you would no longer get unhandled promise rejection when you couldn't connect to database.
-*
-* Now how we can GLOBALLY handle the unhandled promise rejection errors (because in bigger apps, it can become a bit more difficult
-* to always keep track of all the promises that might become rejected at some point)?
-* So let's delete that .catch() in mongoose method and we're gonna do it globally. We're gonna handle them globally in server.js
-* and we're gonna use event listeners. So each time that there is an unhandled error rejection somewhere in our app, the process object
-* will emit an object called unhandledRejection and so we can subscribe to that event by using process.on(...) .
-*
-* Remember: err.name and err.message are kind of default properties that we have on err objects in node. */
-/* Now we must catch uncaught exceptions. But what are they? Well, all errors or let's call them bugs, that occurs in sync code but are
-* not handled anywhere are called uncaught exceptions. For example console.log(x) which x is not defined. For handling them we listen
-* to uncaughtException event.
-*
-* In unhandledRejection, make the app to crash is optional by using process.exit(1) , but in uncaughtException we really need to
-* crash our app. Because after there was an uncaught exception, the entire node process is in a unclean state and for fix that,
-* the process need to terminated and then restarted and again in production we should have a tool in place whcih will restart the
-* application after crashing.
-* In node.js this isn't a good practice to just rely on these 2 error handlers. So ideally errors should really be handled
-* right where they occur. For example in connecting to database error, we should add a catch handler to mongoose.connect() and not
-* just simply rely on the unhandledRejection callback
-*
-* Important: 'uncaughtException' event listener must be at very top of our code, or at least before any other code is really
-*  executed. Because if we would have an error before this handler, it won't catch that error.
-*  Also the 'uncaughtException' handler must be in the entry file which is defined in package.json file. Because that's the file
-*  that our application starts to running.
-*
-* Now if you put that 'uncaughtException' handler a the very top, for example after requiring dotenv package,  the server is not defined
-* at that point. But that's not a problem, because actually we don't need server the server there and that's because those
-* 'uncaughtException' errors, won't happen asyncronously. So they haven't to do anything with the server actually. So I comment
-* some parts of it.
-* Now we have that 'uncaughtException' error handler for sync codes, before we actually require our main application. So because
-* it is before the requiring of main application, it can catch all of the 'uncaughtException' errors in our APP. So if we would
-* have an 'uncaughtException' error in one of our middlewares, if that middleware doesn't execute, that 'uncaughtException' error wouldn't
-* be catched by 'uncaughtException' error handler. For example if we have console.log(x) in one of the middlewares that runs when
-* we have an error, that 'uncaughtException' error won't catched by 'uncaughtException' error handler.
-* Why is that? Because a middleware would execute if we have a request.
-*
-* Learn: At this point if you have something like console.log(x) in one of your middlewares that run for the request, in production
-*  mode we would get 'something went wrong!' message in the response. Because that console.log(x) is non operational error(an error
-*  that we didn't create ourselves).
-*  Also if the non operational error happen outside of middlewares in production mode, the 'uncaughtException' error handler would catch it.
-*  So when there is an error in express or any middleware, it would go automatically to global error handling middleware which is
-*  in errorController file. Also if we were in development mode and have non operational error, the response would be the detailed
-*  error. Why? Because again we have an error in one of our middlewares which is a part of express application and express will
-*  automatically send that error to global error handling middleware and ... .
-*  But if we are in development mode and there is a non operational error outside of middlewares, that error would catched by the
-*  'uncaughtException' error handler. */
+
+
+
+
 
 /* Authentication, authorization and security section:
-Authentication and authorization is all about users signing up and logging into our app and then allowing them to access certain
-parts of app that are not accessible to non-logged in users.
-For authentication we use JWT.*/
-/* Authentication and authorization are all about users signing up, logging in and accessing pages our routes that we grant them
-permission to do so. So it's really all about the users.
-When we set a field with required: true the request must contain that field with it's value.
-We didn't use a username property for user to login, because he will use it's email instead of username for login.
-The email field is a unique identifier of each user so it must be unique for each user.
-Learn: By default emails should be unique. But we 10% sure with this. by using unique: true in email field so there will be no accounts
- with the same email.
-
- Remember: lowercase is not a validator. All it's do is to transform the value of that field to lowercase.
- Photo field is usually optional in most web applications.
- Learn: If a user wants to upload a photo, that photo will be stored in our filesystem and the path to that photo will then be stored
-  in the photo field in database. Like imageCover in tourModel file.
-
-Usually the most secure passwords are the longest ones and not the ones with some symbols or crazy characters. So longer password
-would be more effective than some symbols.
-
-* Later we must also use a validator to see if the confirmPassword field is the same as password.
-*
-* Model variables are usually start with capital letter.*/
+*/
 /* We will do most of the user-related stuff like creating new users, logging users in or updating passwords in the authentication
-* controller. So all of the stuff that are related to authentication are not gonna be in userController file that we created before, but
-* instead we will create an authentication controller file.
-* In authController.js , for creating a user, we don't name the function that do the creating user, createUser like what we kinda did in
-* tourController file but instead we named it signup. Because that's the name that has a bit more meaning in the context of authentication
-* and that would be an async function because we would have some db operations in that function.
-*
-* How we create a new doc based on the model? We use: const <a variable> = await <model name>.create(<an object of data which the user
-* should be created from that data>);
-* <model>.create() would return a promise so we must use await on that.
-*
-* In the JSON that we send back to the client, the data property which it's value is an object is called envelope.
-* When we have an async function, we REALLY need to think about it's error handling. So we use try catch blocks or we use catchAsync
-* function that we created before.
-*
-* The user resource is a bit difference from all of the other resources. Because it really has to do with all things authentication and
-* so we have a different controller for authentication itself so we also have a special route for authentication.
-* Recap: We know that authentication would be used for users resource but it has a separate route from users resource and also separate
-* functions for handling authentication for users resource and therefore we won't write authentication code in users route handler functions
-* and we will separate the code for authentication into it's different route handler functions.
-*
-* So we have to use router.get(). ... inside the userRoutes file, but that router is for authentication although it's in
-* userRoutes file.
-* Also as you can see, currently we didn't use router.route(). ...  for authentication routes. Because we don't have other routes, so
-* with route() we could briefing the route path for all routes. Currently we don't use that.
-*
-* So as you can see, this '/signup' endpoint is really kind of special endpoint. Because it doesn't fit the REST architecure.
-* Because as we said, in special cases, we can create other endpoints which do not fit 100% with the REST philosophy. Because as you can
-* see the name of the url('/signup') is related to the action that would be performed. So it's not based on REST philosophy.
-* But in the tours routes, the name of the url has nothing to do with the action that user wants to do. So for example '/' has nothing
-* to do with getAllTours or createTour. But in routes for users, '/signup' is related to the action that user wants to do which is
-* signing up in our application.
-* Also for tour routes we use different HTTP methods for a common route like '/' but in users routes we only need POST for the
-* '/signup' route and we can't and shouldn't use other HTTP methods for this route. Because it doesn't make sense to have PATCH
-* request for a url called '/signup'. Because the meaning of sign up is register and for register we use post http method and not get
-* or patch because the user must create a document and also send some data so we must use only post.
-*
-* In addition to '/signup' and other future routes for non restful routes in users routes, we will keep the routes that were
-* implemented based on REST philosophy.Like .route('/').get(userController.getAllUsers) and other old rest based routes and their
-* handlers. Because there's also some possibility that the system administrator would want to update or delete or create a users
-* based on their id. So because he is admin and doesn't need authentication, we keep these routes which haven't authorization.
-* So it's not the admin who would signup the user or login the user. It's the user itself who would signup and ... .
-*
-* In database we shouldn't see the plain passwords of our users. Even if we're the admin.
-* Learn: In web applications, passwords should never ever be stored as plain in the db.
-*  */
+controller. So all of the stuff that are related to authentication are not gonna be in userController file that we created before, but
+instead we will create an authentication controller file.
+In authController.js , for creating a user, we don't name the function that do the creating user, createUser like what we kinda did in
+tourController file but instead we named it signup. Because that's the name that has a bit more meaning in the context of authentication
+and that would be an async function because we would have some db operations in that function.
+
+How we create a new doc based on the model? We use: const <a variable> = await <model name>.create(<an object of data which the user
+should be created from that data>);
+<model>.create() would return a promise so we must use await on that.
+
+In the JSON that we send back to the client, the data property which it's value is an object is called envelope.
+When we have an async function, we REALLY need to think about it's error handling. So we use try catch blocks or we use catchAsync
+function that we created before.
+
+The user resource is a bit difference from all of the other resources. Because it really has to do with all things authentication and
+so we have a different controller for authentication itself so we also have a special route for authentication.
+Recap: We know that authentication would be used for users resource but it has a separate route from users resource and also separate
+functions for handling authentication for users resource and therefore we won't write authentication code in users route handler functions
+and we will separate the code for authentication into it's different route handler functions.
+
+So we have to use router.get(). ... inside the userRoutes file, but that router is for authentication although it's in
+userRoutes file.
+Also as you can see, currently we didn't use router.route(). ...  for authentication routes. Because we don't have other routes, so
+with route() we could briefing the route path for all routes. Currently we don't use that.
+
+So as you can see, this '/signup' endpoint is really kind of special endpoint. Because it doesn't fit the REST architecure.
+Because as we said, in special cases, we can create other endpoints which do not fit 100% with the REST philosophy. Because as you can
+see the name of the url('/signup') is related to the action that would be performed. So it's not based on REST philosophy.
+But in the tours routes, the name of the url has nothing to do with the action that user wants to do. So for example '/' has nothing
+to do with getAllTours or createTour. But in routes for users, '/signup' is related to the action that user wants to do which is
+signing up in our application.
+Also for tour routes we use different HTTP methods for a common route like '/' but in users routes we only need POST for the
+'/signup' route and we can't and shouldn't use other HTTP methods for this route. Because it doesn't make sense to have PATCH
+request for a url called '/signup'. Because the meaning of sign up is register and for register we use post http method and not get
+or patch because the user must create a document and also send some data so we must use only post.
+
+In addition to '/signup' and other future routes for non restful routes in users routes, we will keep the routes that were
+implemented based on REST philosophy.Like .route('/').get(userController.getAllUsers) and other old rest based routes and their
+handlers. Because there's also some possibility that the system administrator would want to update or delete or create a users
+based on their id. So because he is admin and doesn't need authentication, we keep these routes which haven't authorization.
+So it's not the admin who would signup the user or login the user. It's the user itself who would signup and ... .
+
+In database we shouldn't see the plain passwords of our users. Even if we're the admin.
+Learn: In web applications, passwords should never ever be stored as plain in the db.
+ */
 /* First we need to validate if the inputted password is equal to the confirmed password and we do it in confirmPassword object in
  the users schema and also we need to encrypt the password in db.
  The callback function that we specify in validate object in confirmPassword field would be called when the new document is gonna

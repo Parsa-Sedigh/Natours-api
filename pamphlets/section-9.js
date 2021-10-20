@@ -1,1617 +1,840 @@
-/* SECTION 8. Using MongoDB with Mongoose
-83-1. Section Intro:
-We're gonna connect a mongodb db with our app and to do so, we're gonna use mognoose which makes working with mongodb in node, easy.
-We're gonna atalk:
-Data models, implement crucial api features, add some data validation and also use the advanced mongodb aggregation pipeline.
-
-84-2. Connecting Our Database with the Express App:
-First we need to get our connection string from atlas. So just like we did before, when we connected the db to compass and to the
-mongo shell, we need to get our connection string, in order to connect the app to this hosted db. So click on connect button then click
-on "connect your application" and then copy connection string and then add an env variable named DATABASE.
-Now we need to put in our password, now we could copy the password from the value of DATABASE_PASSWORD env variable and paste it inside that
-DATABASE env variable,
-
-The anatomy of connection string is:
-<host> is the place where the db is hosted.
-mongodb+srv://<your user>:<password>@<host - ex: cluster0-pw... .mongodb.net>/<name of db that we want to connect to>.
-
-In case you're using the local db, this connection string is easier. You can create an env variable for that as well, like:
-DATABASE_LOCAL=mongodb://localhost:<port - 27017>/<name of db>
-
-As you can see `mongodb` in that connection strings are kinda a protocol, so instead of http, it uses mongodb.
-Now in order for this to work, you need to keep your mongodb server(mongod process) running at all times, WHEN you're working with LOCAL db.
-
-Now we need to install the mongodb driver. It's a software that allows our node.js code to access and interact with a mongodb
-database and there are a couple of different mongodb drivers, but we use mongoose which adds a couple of features to the more native mongodb driver.
-In other words, we use mongoose to connect our code to mongodb.
-So write: npm i mongoose (tutor uses v5)
-
-Now in server.js which is the file where we do all of the setup of our app, for example the env variables, or the import of our express app file which
-is app.js and also we start the server down at that server.js file and this is also the file where we're gonna configure mongodb.
-So require the mongoose package there then use connect() . Now access the connection string through process.env.<env variable name for connection string>.
-
-For second arg of .connect() , we pass an object with some options that we need to specify in order to deal with some deprecation warnings.
-
-Since our npm script is not just called `start` which is kind of a standard but start:dev, we always have to type: npm run start:dev ,
-so we have to use the word `run` and we can't omit it. So you CAN change the name of that script to start.
-
-For connecting to local db, we pass the process.env.DATABASE_LOCAL(which is the connection string to local db) instead of DB variable that we currently
-have.
-
-Now let's delete the collection that we already created in our db in atlas, just so that our mongoose driver doesn't interfere with that in anyway.
-Now we have an empty db.
-
-85-3. What Is Mongoose:
-- What is mongoose and why use it?
-We connected our app with DB using mongoose. But what is mongoose?
-Mongoose is an object data modeling (ODM) library for mongodb and nodejs which provides a higher level of abstraction.
-Mongoose is a layer of abstraction over mongodb driver.
-So it's a bit like the realtionship between express and node.
-
-Object data modeling library is just a way for us to write JS code that will then interact with a database.So we could just use
-a regular mongodb driver to access our DB, but instead we use mongoose because it gives us a lot more functionality out of the box.
-So mongoose allows us faster and simpler development of our apps.
-So mongoose allows for rapid and simple development of mongodb database interactions.
-
-Some features that mongoose gives us: It gives us schemas to model our data and relationships, easy data validation, a simple
-query API, middleware and ...
-
-In mongoose a schema is where we model our data. So where we describe the structure of data, default values and validation.
-Then we take that schema and create a model out of it and a model is basically a wrapper around the schema, which allows us to
-actually interface with the database in order to create, read ... docs.
-Schema -> Model
-*/
-/* 86-4. Creating a Simple Tour Model:
-We configure mongodb in the server.js file not app.js . First require mongoose there.
-
-Mongoose is all about models and a model is like a blueprint that we use to create documents, so it's a bit like classes in JS, which
-we also kind of use as blueprints in order to create objects out of them.
-
-So we create a model in mongoose, in order to create docs using it and also to query, update and delete these docs.
-So basically to perform each of CRUD operations, we need a mongoose model and in order to create a model, we need a
-schema.
-
-So we first create a schema.
-
-So we create mongoose model out of schema and we use schema to describe our data, to set default values, to validate the data.
-
-Mongoose uses native JS data types. After specifying data types for each of the fields in the scehma(the most basic way of defining a
-schema), but we can take it one step further by defining sth called schema type options for each field, or only for some specific field.
-
-We could just say the name field must be a String So we could say name: String and price: Number, but we can also define
-schema type options by giving an object to the field which is more advanced. So instead of passing sth like String or Number to a field,
-we pass an object to that field and specify the type of field in `type` property of that object.
-So that object has got schema type options.
-So the things in that object we pass to field, are `schema type options` and they can be different for different types, for example the `Number`
-type has some different schema options than the String type, but many of them are also similar, for example we can use the `required` schema
-type option on Number type and other types.
-
-In `required` option we can specify the error that we want to be displayed, when we're missing that field.So in order to do this,
-we pass in an array to required option, which in that array the second element is the error string.
-
-Learn: required option is called a validator and we can also create our own validators.
- Also when we expect certain values for a field in database, that would be a validator.
-
-Schema options are not mandatory, so sth like rating: Number is maybe enough, buf if you want more features, then we need to specify
-the schema type options object(by passing an object to that field).
-`default` option is when you create a new tour doc using this schema and not specify the rating(a field), it would automatically set to
-4.5 .
-
-The `unique` option is now we can't have 2 tour docs with the same name.
-
-For creating a model, we wanna create model out of it and you should use uppercase for the first letter of model.
-In .model() , the first arg is the name of model(which should start with an uppercase letter).
-It's a convention to always use uppercase on model names and their variables, like:
-const Tour = mongoose.model('Tour');
-So in this example, we both named the model variable and the model name itself(first arg of model()), with an uppercase letter, so with that,
-we know we're dealing with a model.
-
-Now we can use the created model in order to create docs.
-
-With new mongoose.schema() , we specify a schema for our data. So basically describing it and also doing some validation and ... .
-
-87-5. Creating Documents and Testing the Model:
-Let's create a doc out of a Tour model(or function constructor). So this is kind of using JS function constructors or JS classes(if
-you're using ES6), basically to create new objects out of a class and so that's exactly the same syntax, so we use the new keyword and then
-the class name in ES6. Now here it's NOT exactly the same, but this analogy is helpful to understand how this works.
-So this testTour doc that we created, is an instance of the Tour model and so now it has a couple of methods on it that we can use in order to
-interact with the DB. Like <created doc>.save() to save it to tours collection in the DB. So we can call the save() method on our document instance.
-Now that .save() returns a promise that we can then consume.
-
-For using async await(in order to consume promises), we need to create another function.
-
-In .then() of testTour.save() we have access to the document that just saved in the database. So basically we have access to the
-resolved value of the promise that .save() returns, is the final document as it is in the DB.
-
-Important: Mongoose by default produces a collection name by passing the model name (first arg of .model()) to the
- utils.toCollectionName() method.
- Also note that mongoose automatically creates a new collection as soon as we create the first document using that model.
-So if we hadn't a tours collection which is related to Tour model and then we insert a document in that collection(which that collection
-doesn't exist yet), that collection with it's new doc, will be created automatically in DB and the name of that collection is automatically
-guessed based on the name of MODEl. So if the model name is `Tour`, the collection name would be `tours`(it makes it plural automatically).
-
-By saving the file, this code will be executed right away, because it won't be executed by some reqs which is the case that normally happens
-in APIs, instead, it will be executed right away. So each time we save our files, that code in our model which is saving a doc to db, is
-executed again(of course we would remove this code later). But because we made the `name` field unique, we get an error that says the
-name is a duplicate key.
-
-Mongoose add __v field automatically to each doc that was inserted.
-If the collection doesn't exist when we create the first doc for that collection, mongoose will automatically create it for us.
-
-With this code, we inserted a doc into database VIA OUR CODE.
-The explanation of code is: When you created the model, you must create an instance of model and that instance would be the new
-document and then pass in Tour() the fields and values for that document and then you must save that document.Like below:
-
-const testTour = new Tour({
-  name: 'The Park Camper',
-  price: 497,
-  rating: 4.4
-});
-
-Remember: For using async await, you must create a function. Right? Because async is usually used in declaring function itself.
-
-88-6. Intro to Back-End Architecture MVC, Types of Logic, and More:
-MVC architecture in our express app:
-Model -> Buisenss logic
-controller -> application logic
-view -> presentation logic
-
-In this architecture, the model layer is concerned with everything about application's data and the business logic.
-
-In controller layer and the function of the controllers is to handle the application's request, interact with models and send back responses
-to the client and all that is called the application logic.
-
-View layer is necessary if we have a graphical interface in our app or in other words, if we're building a server-side rendered website.
-In this case, the view layer consists basically of the templates used to generate the view(so the website that we're gonna send back to the
-client.)(presentation logic).
-For now, we're just building an API though, so we're not really concerned about views just yet.
-
-We could add more layers of abstraction here.
-Now let's take a look at MVC in the context of our app and the request/response cycle.
-So as always, it all starts with a request. Then that request will hit one of our routers(because we have MULTIPLE routers).
-In other words, because we have one router for each resource.
-Now the goal of the router is to delegate the request to the correct handler function and that function will be in one of the the
-controllers and we know that there will be one controller for each resource. Then depending on the incoming request, the controller might need
-to interact with one of the models and again there is one model file for each resource. After getting data from the model,
-the controller might then be ready to send back a response to the client, for example, containing that data.
-But in case that we want to render our website there is one step involved. In this case after getting the data from model,
-the controller will then select one of the view templates and inject the data from model to it and that rendered website will then be sent
-back as the response.
-In the view layer, in an express app, there's usually one view template for each page. Like a tour overview page, a tour detail page or a login
-page.
-
-- Application vs business logic:
-Let's go into a bit more detail on model and controller.
-
-One of the big goals of MVC, is to separate business logic from application logic. But what are these types of logic?
-
-Application logic is code that is only concerned about the application's implementation and not the underlying business problem
-that we're actually trying to solve with the application, like showing and selling tours, managing stock in a supermarket.
-So application logic is the logic that makes the app actually work. For example, a big part of application logic in express is
-all about managing requests and responses. So application logic is more about TECHNICAL STUFF. Also if we have views in our app,
-the application logic serves as a bridge between model and view layers. So that we never mix business logic with presentation logic.
-
-About business logic, it's all the code that actually solves the business problem that we set out to solve. For example, our goal is to show
-tours to customers and then sell them and the code that is directly related to the business rules, to how the business works
-and the business needs is business logic.
-EX) Creating new tours in the app's DB, checking if a user's password is correct when he logs in, validating user input data or ensuring that
-only users who bought a certain tour can review it and ... , so all this stuff is concerned with the BUSINESS itself and so it's part of the
-buisness logic.
-
-Keep in mind that application logic and business logic are almost impossible to completely separate and so sometimes they will overlap.
-But we must do our best to keep application logic code in controllers and business logic code in models and there is even this philosophy of
-Important: fat models/thin controllers which says: We should offload as much logic as possible into the models, to keep the controllers simple and lean.d
- So a fat model will have as much business logic as we can offload to it and a thin controller will have as little logic as possible,
- so that the controller is really mostly for managing the application's requests and responses.
-
-application logic                                             CONTROLLERS    <------>   MODEL   business logic
-- code that is only concerned about the application's implementation,                 - code that acatually solves the business problem we set out to solve
-  not the underlying business problem we're trying to solve(e.g. showing              - directly related to business rules, how the business works and
-  and selling tours)                                                                    business needs
-- concenred about managing reqs and responses                                         - examples:
-- about the app's more technical aspects                                                  creating new tours in the DB
-- bridge between model and view layers                                                    checking if user's password is correct
-                                                                                          validating user input data
-                                                                                          ensuring only users who bought a tour can review it
-*/
-/* 89-7. Refactoring for MVC:
-Currently we have controllers folder and routes folder, so now we need a models folder. So create that and create the tourModel.js there, then
-cut the code wrote for tourSchema and mongoose.model() that we have in server.js , to that tourModel file.
-
-All we have to do in server.js is to connect to db, but everything that is about the models will always live inside a file in models folder.
-
-At last, we must export our model from model files and that should be the ONLY thing we export from model files and so we use the default export
-for doing that with mode.exports = ... , to use it (querying, deleting and ... docs) in the related controller file.
-
-Now where do we need that exported tour model? In other words, where are we actually gonna create and delete and ... tours(docs of that exported
-model)?
-In tourController and there, we import the exported model with the same name. For example the model is named Tour amd we import it with the name,
-Tour.
-
-Now in tourController, clean the code we wrote before in order to no longer depend on the data that we had in the JSON file, because now we wanna
-work with real DB.
-
-Also we no longer need checkId() function in tourController, because from now on, we're gonna start working with the IDs that are coming from mongodb,
-because mongo itself, will give us an error if we use an invalid id, so that checkId() function was very useful for showing you how middleware actually
-works.
-So comment checkId() out.
-
-Now in tourRoutes.js , comment out the router.param('id', tourController.checkId)
-Remember: We use router.param() to define parameter middleware.
-
-Now we wanna create the controller functions or handler functions in tourController with mongoose.
-
-90-8. Another Way of Creating Documents:
-Comment out the checkBody() function, it was to validate the body, so to see if it had the name or the price property in them, but now,
-our mongoose model is gonna take care of that. Also comment it in tourRoutes.
-
-We can create a new do like:
-First approach:
-EX) const newTour = new Tour({
-      name: req.body.name,
-      price: req.body.price,
-      rating: req.body.rating
-  });
-  newTour.save().then();
-
-This code will work but there's an easier way:
-Second approach:
-EX) Tour.create({})
-
-The difference is in second approach, we call the method (save()) on new DOCUMENT, but in the next approach we call the method (create())
-DIRECTLY on MODEL itself instead of calling the method on the instance of model which is our new document. These are completely different.
-So again we had the tour document that we created from the model(by using new <model>()) and on that new document variable, we used the save() method ,
-because the document has access to save() and a lot of other methods as well.
-
-But in second approach, we call the method(create()) right on the MODEL(and not document) itself.
-
-In Tour.create(), because .create() returns a promise, in order to access the document that was created inside db, we must
-use .then() . But it's better to use async await. So we are waiting for the returned promise of .create() and save the resolved value
-of this promise to newTour variable.
-
-Remember: If eslint gives an error that says: The async functions are not supported until node 7.6.0 . The configured version range is
-'>=6.0.0' , or sth like this, this is because of node plugin that we installed. So go to package.json and in there define
-the node version that you're using. So after devDependencies, say:
-"engines": {
-  "node": ">10.0.0"
-}
-So this means in this project, we're using at least version 10.0.0 . Yes, 7.6.0 would be ENOUGH in order to make that eslint error disappear,
-but of course we specify the real version that we're actually using.
-
-But with even specifying ">7.6.0" it's enough to make this error disappear. But it's better to specify the real version of node
-that you're currently using.
-
-Learn: When the client send additional fields that aren't in the schema, those additional fields and values will ignored by
- the schema and won't inserted into db.
-
-In this function, we're creating docs, USING MONGOOSE.
-
-Remember: With using async await, we need to test for errors by using try catch syntax.
-In catch block we have access to error object, by specifying a name for argument that stores the error object.
-Also in catch block, we need to think what the errors would be? One error would be the request didn't provide all of the
-required fields that we specify in schema and that's a validation error and that can be catched in .catch().
-Because if we try to create a doc without one of the required fields, then the promise that is returned from .create(),
-would be rejected and if we have a rejected promise, it will enter the catch block.
-Learn: Rejected promises will enter the catch block.
-Learn: 400 status code means bad request.
-
-Everything that is not in our schema, is simply ignored, so if client sends some data that aren't in the related schema, those data are ignored.
-So that is the power of schema!
-
-Mongodb gives back a huge error object in that catch block and later on we will create more meaningful errors.
-This is how we create docs using mongoose.*/
-/* 91-9. Reading Documents:
-try {
-  const tours = await Tour.find();
-  res.status(200)...
-} catch(err) {
-  res.status(404)...
-}
-
-We use the data property which is an object in the response we send to client, in order to envelope the data, like when getting tours, we envelope
-them with data property which has an object as value.
-
-In this case, there's not gonna be any validation errors that could be catched in catch() block(unlike creating docs).
-
-findById() is a shorthand or a helper function for findOne() method with a filter object. So we could also say:
-Tour.findOne({ _id: req.params.id }) So findById() is a shorthand for writing the filter object in findOne() and behind the scenes
-the findByID() will work exactly like findOne(). So:
-Tour.findOne({ _id: req.params.id }) === Tour.findById(req.params.id);
-
-92-10. Updating Documents:
-We can query for the document that we want to update and then update it, with ONLY 1 command in mongoose.
-
-In third arg of findByIdAndUpdate(), we can also pass in an object of options and in there we can set `new` property to
-true and by setting that property to true, the new updated document is the one that will be returned from that method
-rather than the original doc and since we want to send back that updated document to the client, we always want this method to
-return that updated(new) doc. We must store that returned doc into a variable by awaiting it.
-
-All of the find() , findByIdAndUpdate() , findById() , all of these, will return queries, so they are query methods.
-
-findByIdAndUpdate() is just a shorthand for findOneAndUpdate() , where we're querying for an id
-
-With setting true for runValidators option, each time that we update a certain doc, then the validators that we
-specified in the schema will run again.
-
-Learn: When we say: <sth>.prototype. ... , it means an object that was created from a <sth>. For example:
- Tour.prototype.save() means an object created from Model class. So Mode.prototype.save() method in mongoose refers to a save() method
- called on a DOCUMENT and NOT on a Tour Model class, which is an object from Model class.
-EX) When we have:
-const newTour = new Tour({});
-newTour.save();
-
-This newTour got ACCESS to the save() method, because save() is part of the prototype object of Tour class.
-Important: So again, when you see Model.prototype.save() , you know that the save() method is gonna be available on ALL of the INSTANCES created
- through a Model and not the Model ITSELF, but from it's INSTANCE. So if for example you try Tour.save() , it would give you an error.
-In other words:
-Important: So in mongoose when you see Model.prototype.save() we find out that the save() method is going to be
- available on all of the instances created through the Model class and save() it's not available on Model itself.
- So if you try to write Tour.save() it would give an error, but if you use .save() on a document (an object) created through
- the Tour, then it would work.
-
-Methods like findById() or update() or ... will return query objects.
-
-Instead of tour: tour we in an object we can say: tour.
-Remember: In updating a doc, if you send additional fields that curr aren't exist in database, they would be ignored.
-
-Because of runValidators: true , if we send String Instead of Numbers when updating docs, it would give us an error. Because
-it would look at the schema for data types.
-Also because for updating we're using PATCH HTTP method, the original doc wouldn't replaced by the new object that we sent in.
-But if we were using PUT request, the original object (doc) would completely replaced with the new one that is sent in and in
-that case it won't work with findByIdAndUpdate() method. Because this method updates the fields that are different in body
-and in db.
-
-For example findByIdAndUpdate() or find() or findById() , all of these, will return "query objects" and so later on when we're gonna implmenet
-stuff like sorting or filtering, we will then use this query object.
-
-If you update a field to a type other than the specified type in schema and you have set the runValidators: ture, it would throw an error.
-Because we ran the validators again.
-So when we have in req body of an update endpoint sth like: price: "some price" , mongoose can't convert this string to a number, so it throws an
-error.
-
-In PUT req, we expect to get the FULL object coming from req.body, so in this case, the original object would be COMPLETELY replaced with the
-new one that is sent in from req.
-
-findByIdAndUpdate() updates the fields that are different in the body of req.
-
-93-11. Deleting Documents:
-We didn't save the result of awaiting in await Tour.findByIdAndDelete(req.params.id); to a variable, because we don't send anything back to the client,
-so in a restful API, it is a common practice NOT to send back any data to the client, when there was a DELETE operation and 204 status is
-kind of a standard for deleting.
-Also note that in case of deleting, postman doesn't show anything as body of response.*/
-/* 94-12. Modelling the Tours:
-If a field must have a value of pre-defined possible values for example it should be either 'medium', 'easy' or 'difficult', that is a VALIDATOR.
-
-About ratings, later we would have another resource called reviews, where users will be able to write reviews about tours and give
-ratings and that's gonna be a completely different resource, so it would have a different model. BUT still we want to have a summary of
-these ratings and of these reviews which are in a different model, in this tour model. SO THIS APPROACH IS ACCEPTABLE.
-
-We didn't gave those 2 ratings fields(ratingsAverage and ratings(Quantity) a required validator. Because it's not the user who creates
-these tours who will actually specify the ratings values. So when we create a new tour, we will never specify the ratingsAverage neither the
-ratingsQuantity, because that will LATER ON will be calculated from the real reviews.
-
-When we have sth like: <field>: <type> , we didn't give it any schema type options.
-We make the summary field required, because it's on the front page of our website, so basically it's on the overview.
-
-trim schema type option only works for Strings which will remove all the whitespaces in the beginning and in the end of the string.
-(So remember that I said there are different schema types (options) for different types and for string we have a schema type which is
-trim). So if for example someone sends sth like: "     This is good.     ", then all that whitespaces will get cut.
-
-The summary schema option is required because it's on the overview page and we defenitly want to show it.
-imageCover is just the name of the tour image and we will read the image from the file system. But in db we just store the name
-of the image as a reference.
-
-Learn: We could store the entire image in database as well, but it's not good. We leave the images somewhere in the file system
- and then put the name of the image itself in the db as a field.
-So the name of the image is kinda a reference of that image will be stored in the DB and that's a common practice.
-
-In images schema option, we would have multiple images, so we must save those images as an array of Strings. So we must specify
-an array of strings ([String]) for that field value, instead of an object of schema options.
-So in schema, [String] means a number of strings in an array.
-
-The type of field is also itself an schema type option.
-
-The createdAt field should be a timestamp that is set by the time that the user adds a new tour.
-Date is a JS built-in data type. Date.now() will give us a timestamp in milliseconds, which represents the current milliseconds.
-But in mongo, this millisecond(Date.now()) will immediately converted to today's date, in order to makes sense of that data.
-createdAt should be added automatically at time that the tour(row) is created.
-
-startDates are different dates at which a tour starts. For example we can have a tour starting in December this year and then in Feburary the next
-year and ... , so different dates for the same tour , are simply different, let's say, instances! of the tour starting on different dates.
-But that startDates won't automatically created by mongo and mongo will then automatically try to parse the string that we passed in as
-a date into a real JS date. So in that array we could pass in an element like: "2021-03-21" or we can also specify the TIME
-of that date "2021-03-21,11:32" and then mongo will automatically parse this string to a valid date.
-Wwe could also input a unix timestamp like the format we have in Date.now() and so mongo will try to parse ALL of these date formats into a JS
-date and only if it can't, it will then throw an error.
-
-Now for testing the new model, we can grab a tour from dev-data folder and pass it in the req for testing the creation of a tour, instead of
-writing all of it manually(remember to remove the id, because we needed before when we were doing our file-based API).
-
-Important: When the schema is changed and some fields with default values have been added to the new schema, mongo will automatically update
- all of the old docs, so now they have also those newly added with the defined default values!
-
-We wanna write a script which will automatically import all of the tours from tours-simple.json . So it will read the file and get all
-the tours and import them into the DB.
-
-95-13. Importing Development Data:
-We wanna load the data from the JSON file into the DB and this script is completely independent of the rest of our express app and so we will
-run this compltely seprarately, from the command line, just to import everything, once. We can create the file for that script in
-dev-data/data folder.
-In that file, we need the dotenv package, because we need our env variables in order to be able to connect to the db again.
-In this file we also need to connect do db again, because this file runs completely independent from our express application. It's only
-gonna run once in the beginning.
-This file will only run once in the beginning.
-Important: We also need the tourModel file because that file is where we want to write our data to.
-
-<Model>.create() method accepts an object. But it can also accepts an array of objects and in that case, it will create a new doc for
-each of the objects in the array.
-
-Remember: When you read a file which has json file, the variable that we store the result of fs.readFileSync() would be JSON,
-so after reading the file, we need to convert the data of that file into a valid JS object, by using JSON.parse() on the file.
-Important: In first arg of readFileSync() or './tour-simple.json' the dot is always relative to the folder where the node
-application was actually started. So the dot would point to the home folder, so now we're looking for this file in the home
-folder, so it would give us an error.So we must use __dirname which is available for us everywhere.
-
-Now what about the data that is already in the database?
-We can create an easy way to basically delete all of that data at the same time. So let's create a function for this as well named deleteData() .
-
-With deleteMany() and not passing anything to it, it would delete all of the docs in a certain collection that we're calling deleteMany() on it.
-This mongoose's function do exactly the same as deleteMany() in native mongodb.
-
-Now we could call importData() and deleteData() just like this in that file, but we wanna do this by interacting with the command line.
-So we're gonna run that file without calling any of those functions.
-
-The ./ is always relative from the folder where the node application was actually started. So if you run node command from the home folder,
-./ would point to the home folder.
-So in import-dev-data.js , instead of . in path we pass to readFileSync() , we should use __dirname which is available to us everywhere.
-
-Important: When you're running node command, the current directory that you're in is very important.
- __dirname is always the directory in which the currently executing script resides. So if you typed __dirname into
- /d1/d2/myscript.js, the value of __dirname would be /d1/d2. By contrast, . (dot)gives you the directory from which you ran
- the node command in your terminal window. BUT WE HAVE AN EXCEPTION FOR dot (.) INSIDE require():
- If inside dir2/pathtest.js you have a require call into include a file inside dir1 you would always do:
- require('../thefile') .
- Because the path inside require is always relative to the file in which you are calling it. It has nothing to do
- with your working directory.
-
-So for running import-dev-data.js file from the root of the project, we must run the command: node ./dev-data/data/import-dev-data.js
-
-So we learned that ./ is always pointing to the current working directory except in require(). The require() function,
-translates ./ to the directory of the current file (where the script is located).
-
-You can call the functions in import-dev-data.js, but let's work with terminal. So we can set things up so when we enter some options when
-running the node command, one of our functions will be called and for other option, other function will run.
-
-process.argv is an array of 2 arguments that are running the node process. The first element in that array is where the node
-command is located(so it is equavilant to where the `node` command(which is the first keyword we used in terminal to run program) is stored and
-and the second element in the array is where the script file is located (not the current working directory!)
-Now when you want to run: node <path from current working directory to where the scripts file is located> , you can specify some
-options in end of the command. So let's say: node ./dev-data/data/import-dev-data.js --import . Now in process.argv we have 3
-elements in array. 2 of them are repetitious, but the new one is the option that we put for running the node command which in this
-case is --import.
-
-First run the --delete one and then --import . So we first get rid of old docs.
-So run dev-data/data/import-dev-data.js --import (or --delete)
-
-In terminal we can use -- to specify the options.
-
-In our simple command line app, it will import the data when we specify the --import option when running that file with node, and will
-delete the data when we specify the --delete option in cli.
-So based on some conditions, now we can call our functions in that file.
-
-Now after running these commands, our process would still be running, so let's fix that.
-process.exit() is kind of an aggressive way of stopping an application. But in this little script, it doesn't matter. It wasn't
-really matter to add this method here in our code, but it makes our lives a bit easier so we don't need to use ctrl+c to
-exit the application after the node command has finished. Also I put this process.exit() outside of try catch block, because
-with this, no matter there's an error or not, the process.exit() will always executed.
-
-Now we deleted the old docs from db and then, have imported our data in db that we can start working with them.*/
-/* 96-14. Making the API Better Filtering:
-We wanna implement a couple of common api features, that make api more pleasent to use.
-
-Let's allow user to filter the received data using query string.
-So filtering makes sense on getAllTours() in our API. Why?
-Because this is the endpoint that gets ALL the tours and so we want to allow the user to filter the data, so that instead of getting all
-the data, he only gets the data that matches the filter. So like this, we can basically allow the user to query the data in a easy way, using the
-query string. You can specify the query strings in `Params` tab of postman
-So here we want to allow user to filter data, so he will get only the data that matches the filter.
-A query string starts with a question mark and then user can specify some field-value pairs.
-Now we must access the query string in express and in express the data in query string are on req object and then
-the query property
-
-Important: When you have an async function, if you're awaiting all of the promises that are inside of the total async function AND
- IF Total function doesn't return a promise itself, you don't need to use await on the calling code and wrap it again in a function
- with async keyword. That's why when we're calling this function in tourRoutes we didn't use await or ....
-When we don't pass anything into find() method, it will return all the documents in that collection.
-So it's like kind of: First we build the query and then we execute the query with await keyword. Why we can build
-the mongodb query from query string? Because the query string is almost identical to native mongo queries. So with
-some changes we can filter the data using the query string.
-
-Let's say the query string is : ?difficulty=easy&duration=5
-We can access the query string with req.query .
-
-It's crucial to put dotenv.config() BEFORE const app = require('./app') in server.js .
-
-In mongoose, there are actually two ways of writing db queries. The first one is to just use filter object and pass it to find() and ..., so
-again, it works the exact same way as with a normal mongodb query and then the second way is to use some special mongoose methods.
-For writing db queries in this method we can eiter say:
-approach 1:
-const tours = await Tour.find({
-    duration: req.query.duration,
-    difficulty: req.query.difficulty
-});
-
-Or either:
-approach 2:
-const tours = await Tour.find()
-                        .where('duration').equals(req.query.duration)
-                        .where('difficulty').equals(req.query.difficulty);
-
-In second approach, we chain some special mongoose method to basically build the query.
-
-Other mongoose methods are: lte(), let(), gt() (these are like where()) and we can also sort the results or limit the number of results and ... .
-
-Currently, the req.query looks a lot like the object that we pass to find() in approach 1 . So we used approach 1.
-
-Remember: find() will return an object which is a Query (So in this case <model>.query will also return a Query),
-so that's why we can chain other mongoose methods to this code. So on Query.prototype we have a lot of methods like gte,
-sort, where and ... .
-Query.prototype refers to objects that we're creating using Query class.
-Important: As soon as we await the result of query, the query will then execute and come back with the docs that match our
-query. So if we do it like this (using await), then there's no way of implementing sorting or pagination or all of those
-other features. So we must save the part of query into a variable and in the end after we apply all of the methods we want
-to the query, we can await the query and receive the docs.
-So if we await the result of query immediately it would be impossible to sort or limit or use any other method on query.
-
-Now we implemented with .find(req.query), but this approach is too simple. Because later on, we will have other query parameters like
-for example, sort for sorting functionality, or page for pagination and so we need to make sure that we're not querying for these
-in our DB. So if we had page=2 as query string, currently, we would not get any results if we have a key-value pair in query string
-that has nothing to do within the db, then we shouldn't look for that key-value pair in db. BUt with this approach, we WOULD
-query for that key-value in db even it hasn't anything to do with db, like pagination. So if the user request the api with
-query string of ?page=2 , with this implementation (.find(req.query)), we would query the database for page=2, but as we
-know there isn't any doc in collection that has page=2, so the response would be nothing!
-
-So when there's page key-value pair in query string or a few other key-value pairs, we don't want to query db with these
-key-value pairs! But with this implementation we would. So it isn't a good implementation. So we must exclude these SPECIAL
-field names from our query string, BEFORE we actually do the filtering (query the db under a condition).
-
-For filtering, we want to change (in this case, delete) some fields of req.query, so we must hard copy the req.query, so
-with this approach, the further code that is using req.query won't work with changed req.query, but with original req.query
-object.
-IMPORTANT: When you're using a string method in JS that is returning a NEW array or NEW strting or ..., you must store the
-result of using that method in a variable, because if you just console.log() the string or array that use a method on it,
-that method doesn't change the original array or string. So you must store the result of using a method on an array or string
-to get the changes and if you want to store the result of using a method on an array or ... on that variable itself, you must
-declare that variable with let not const from beginning. Because by using a method on that variable, you're changing that whole
-variable.Like what we did with queryStr below. Or what we did with fields variable in further code...(we declared it with let and
-other stuff that I mentioned.)
-
-For doing this task, we must create a shallow COPY of req.query object. So let's create a new variable that gets a COPY of
-req.query and not the req.query itself. The variable is queryObject. For this variable we really need a hard copy of
-req.query and we can't just do: const queryObject = req.query; (assigning req.query to queryObject).Because in further code
-we would exclude (delete) some properties from queryObject and with this, those properties from req.query would ALSO BE
-DELETED (but we don't want this!Because req.query must show all of the key-value pairs from query string not some of them!)
-and that's because:
-Important: In JS, when we set a variable to another object or in other words, assign an object to a variable, that variable
- would be a reference to the original object. So if you delete something from the variable that we assign the object to it,
- those properties from the object would be deleted too. So we need to pass a hard copy of req.query to the variable.
-So we need a hard copy.
-So we can use destructuring of an object(with ...<object>) and then create a new object out of that by adding curly brackets around it({...<object>})
-Important: The destructuring will basically take all of the fields out of the object (copying the key-value pairs) and with
- curly braces we're creating a new object.
-So with this code, we have a new object(not a reference to original object) that is going to contain all the key-value pairs that were in req.query object.
-EX) const queryObj = {...req.query}
-After this let's create an array that is like a list of the parameters that we want to exclude from query string.
-
-We use .forEach() because we don't want to save a new object.
-
-Now we delete the all of the fields from our queryObj, so we loop over the fields we wanna delete from queryObj and then we use the delete operator.
-
-Now we exclueded the key-value pairs that we don't want in queryObj.
-Now even by sending page=2 query string, the results won't be empty, because we would exclude that page=2 from our filter query.
-So our filter feature ignores the page, sort and limit fields.
-
-The find() method is gonna return an object which is a Query and on Query.prototype , we have a lot of methods in mongoose
-like where() , gt() , sort() and ... and that is the reason why we CAN then chain other methods like .where() or .equals() or ... .
-
-Query.prototype refers to objects that we're creating using the Query class. So this is the reason that we can do this chaining.
-
-As soon as we actually `await` the result of query like await Tour.find() , the query will then execute and come back with the
-docs that match our query and so if we do it like this(like await Tour.find()), then, there is no way of later, implmeenting sorting or
-pagination or all the other features. So instead, we need to save the Tour.find() part into a query and then in the end, as soon as we
-change all the methods to the query that we need to, only then by the end, we can `await` that query. For example we're gonna use the
-sort() method or project() or limit() and we're gonna chain them to this query(Tour.find(queryObj)) and that would be impossible to do if we
-await the result of the initial query(which in this case is Tour.find()) right away.
-
-So instead of writing this:
-EX)
-const tours = await Tour.find(queryObj);
-we say:
-const query = Tour.find(queryObj);
-or
-const query = Tour.find()
-                  .where('duration')
-                  .equals(5)
-                  ...
-
-const tours = await query;
-
-So build the query and after working with it, we execute the query. */
-/* 97-15. Making the API Better Advanced Filtering:
-Right now, a user can only filter the docs by setting one key equal to a value in the query string of request. But now, we actually want
-also to implement the greater than, the greater or equal than, the less than and the less or equal than operators. So instead of just having
-equal like: difficulty=easy , we wanna be able to for example say: duration >= 5 and not just equal. In this case, what would the filter object actually
-look like in mongo?
-The query in mongo would be:
-{difficulty: 'easy', duration: {$gte: 5}}
-
-When we want to use an operator in mongo, we need to create another object, so to duration, we would need to pass in another object in order to use
-a mongo operator. So this was how we would manually write the filter object for the query that I mentioned.
-Now in postman, we wanna look at a kind of standard way of writing a query string including these OPERATORS and for this, BEFORE the equal sign,
-we open up the brackets and in there, we write the operator.
-
-In mongo, when we want to use an operator we must start another object: {duration: {$gt: 5}} So in this example for using
-greater than operator we must start a new object. But in query string we must place the operator inside a pair of brackets
-before the equal sign. For example: ?duration[gte]=5&difficulty=easy
-So basically like this, we add a third part to the key value pair, so we have the key(duration), the value and now also the operator.
-So again, we use these brackets, in order to specify the operator.
-
-Now if you send a req with this query string, you will get an error, but we will fix this. Because currently, mongo cannot really use the query
-string or the queryObj as we have it right now.
-
-Now if use console.log(req.query), the result(query object) would be: { duration: { gte: '5' }, difficulty: 'easy'} which is almost
-IDENTICAL to the filter object that we write in native mongo, the only difference is the $ in mongo filter object for operators
-that query string doesn't have it.
-So we have:
-
-So that's the only thing that is missing in the front of the operator name in req.query.
-The solution for this, is to basically replace all the operators with their corresponding mongodb operator, so basically adding that
-$ in front of them.
-So now we get the query string and then delete the key-value pairs other than the excludedFields array.
-Learn: Now we know from beginning that query string is almost identical to native mongodb filter object. So we must prepare
-that if user send [<operators>] in query string we must add $ to them in the queryObject.
-
-Now how we add $ to operators in queryObject variable?
-First we should convert the queryObject object to string by using JSON.stringify(). AFTER THIS WE CAN use .replace() method on it.
-The ones that we wanna replace are: gte, gt, and ... and there are a couple of ways in which we can do it, but we're gonna use a regular
-expression. So we wanna match one of these words that I mentioned and then replace it with the same words but with a dollar sign in front of
-it, to make it look like a query in mongodb. Remember that .replace() only works on strings not objects or ... .
-
-In regular expression, we need to find one the operators and replace it with the $ one and we add \b before and after the
-inner parentheses because we only want to match these exact words. So imagine there's a word inside the string that has `lt` in it.
-But we don't want to replace that word but we want to replace a word that is EXACTLY lt, without any other string stick to
-it or around it. So because of this we used \b. The g flag means that it will happen multiple times, so if we even have 2 or more of
-those words, it would do the same for ALL of them. But without the g flag, it will replace only the first occurrence of
-those words and won't check further.
-replace() method also accepts a callback and in this callback the first arg is the matched word or matched string and What you
-return in that callback will be the new string that will replace the old one.
-
-Important: The replace() in JS returns a NEW array. So you must store it in a variable (usually in the original variable, so
- the variable must be declared with let and not const.Because we're reassign it to a new array.).
- By storing it in the previous variable that holds the old string(the string that was not yet replaced with new strings), it means we're actually
- mutating the data.
-So when we have:
-ex)
-let queryStr = '<string>';
-queryStr = queryStr.replace(...);
-
-We're mutating the queryStr variable.
-Also note that if we don't store the result of queryStr.replace() to some variable(whether it is a new variable or not), we aren't using
-the RESULT of replacing, so it's a USELESS code. So we have to save the result of replace() back to a variable to use that result later.
-
-Now if you wouldn't have any operators in the queryStr, then everything will work just fine, so it won't replace anything.
-
-Another example:
-ex) 127.0.0.1:3000/api/v1/tours/duration[gte]=5&difficulty=easy&price[lt]=1500
-
-So now our filter, accepts these four operators. Now in the real world, we would have to write some documentation in order to allow
-the user to know which kinds of operation they can do on our API.
-
-Important: The mongodb and mongoose methods need queries to be objects.
-The $gte and ... are filter functionality that our API has them.
-
-Now we must create the sorting feature that a user can sort the results based on some fileds which those fields can be passed
-into query strings.
-
-Now let's implement sorting functionality.
-
-98-16. Making the API Better Sorting:
-Let's now implement result sorting, so sort the result based on a certain field. For example we wanna sort by price, so in query stirng,
-we say: sort=price .
-Now nothing will happen and the order of results would not change, because we filtered out this sort field with some code that we wrote.
-So we first created the queryObj by saying:
-const queryObj = {...req.query};
-tnn we excluded some fields from it and created the excludedFields variable, so those field wouldn't pullote our filtering.
-BUT now we actually need those excluded things.
-
-Important: We STILL can use req.query with it's ORIGINAL format that user sent to us, because we made a COPY from it for the queryObj.
- Because we have: const queryObject = {...req.query};
-
-We must declare query variable with let, because in further code we want to CHAIN something to this query, query = query.sort()
-
-Remember: <model>.find() will return a query, so because it returns a query we must store that query object in a variable, so then later on,
-we can AGAIN chain more other mongoose methods on that variable which keeps the query as value.
-So later on, we can keep chaining more methods on the previously stored query object. So more of those methods that are available on all docs
-created through the Query class.
-ex) query = query.sort(req.query.sort); // with this, we sort the results based on the sort, in ascending way(keep increasing)
-
-Learn: sort() method for numbers is making results ascending by default.
-But if you want to sort them in desc order you can set the value of query string to -<value>. For example: ...?sort=-price .
-This would be sort the price field desc(so mongoose will then automatically sort them in the descending order).
-
-We can have some docs that have some equal or same fields based on sorting, now how they would sort? For example how results
-with same price would ordered within themselves? So for example: 997, 320, 320, ... . How those 2 docs with 320 price field
-would ordered in results? So we want to sort(rank) them based on a second criteria. So in case that there's a tie, then we want
-to have a second field by which we can then sort the docs that are tie in first field(in this case the first field is price).
-
-In mongoose this is easy, so we list the fields that the sorting would be based on them: sort('price ratingsAverage') , in this
-example, if the price was tie, those docs that have an equal price would be sort based on their ratingsAverage (so we put another field name
-to the string we pass to .sort()) . But for specifying the sort fields in query strings, we must separate them by comma and we cannot leave a
-space in the url when we're requesting an endpoint of api, therefore, we use a comma.
-So in the prior example, the query string would be: ...?sort=price,ratingsAverage .
-In this example, we wanna sort FIRST by price and then as a second criteria, also by ratingsAverage.
-So as you saw, in mongoose and in sort() method, we separate fields for sorting with spaces, but in query strings we separate them by comma.
-So we must manipulate req.query.sort and replace commas with a space.
-So let's create a variable called sortBy and we're gonna split req.query.sort by the comma and this will then return an ARRAY of all the strings,
-so all the field names in this case and then we have to put it back together using .join() .
-
-Now if two fields ALSO are even equal by ratingsAverage, we need to pass in another criteria!(if this matters to us of course!)
-
-Now let's add a default sort and we do that by adding an else block. So in case that the user does not specify any sort field in the
-query string url, we're still gonna add a sort to the query and we will sort by createdAt field in descending order, so that the newest ones appear
-first and if they're createdAt field were the same, we have not specified a second default criteria, so they would be just come one after another
-without an explicit order.*/
-/* 99-17. Making the API Better Limiting Fields:
-In order to allow clients to choose WHICH fields they want to get back in the response, we want to implement this feature.
-
-For a client it's always ideal to receive as little data as possible in order to reduce the bandwidth that is consumed with each request and
-that's specially true when we have really data-heavy data sets. So the api user should request only SOME of the fields.
-
-In query string, user lists the fields that he wants. For example: ...?fields=name,duration (Remember: In query string, we
-can't have white space.)
-We create a variable called fields , because just like before, mongoose actually requests a string with the field name separated by spaces.
-
-select() expects a string like: .select('name duration price') and so this way, it will only select these three field names and send back
-the result only containing them.
-The operation of selecting only certain fields of results is called projecting which uses .select() method in mongoose.
-By saying: req.query.fields.split(',').join(' ') , we will produce sth like: 'name duration price' which is what we want to pass to .select() .
-
-Now we also want a default so in case the user doesn't specify the `fields` field in query string. Put the code for this task in else block and
-in this case, we actually want to REMOVE sth. Remove what?
-Currently, we always have that __v field which is set to 0 and mongoose creates __v field in each doc and sets it to 0.
-Because it use those fields internally and we could disable them but
-that's not a good practice. Because mongoose actually uses them. But what we can do is never send them to the client. So
-we can EXCLUDE them. and the way we exclude sth from response, is to instead of doing query.select('__v') like before,
-Sp minus in select() is for excluding and not including.
-we can exclude a field from sending it from server to client by using -<field name> in select()
-method. Basically select() method, sends some fields from server to client. So with select('-__v'), we're only excluding __v field.
-Notice that by using -<field names>, we EXCLUDE that field and send EVERYTHING EXCEPT that field(s) to the client. But when
-you're using <field names> in select() method, ONLY THE SPECIFIED fields will send to the client.
-
-Note: We can't exclude _id field.
-
-This point also applies in query string. So if user writes: fields=-name in query string, everything EXCEPT `name` field would send to the client
-and if writes fields=name , only the name field would send and ... .
-ex) 127.0.0.1:3000/api/v1/tours?fields=-name,-duration
-This means, the user wants everything except name and duration. So we don't send the name and duration in docs.
-
-We can also exclude fields right from the SCHEMA. For example when we have sensitive data that should only be used internally.
-For example, stuff like password should NEVER BE EXPOSED TO THE CLIENT.Therefore we can exclude some fields right from the schema.
-Or for example, we might not want the user to see when exactly each tour was created, why? For example tour might already be kind of
-old and so let's say we want to always hide the createdAt field.
-So always in this case means from the schema and not from the controllers. So we must go to where the schema is created and defined.
-So it is in models and for any field we want to always hide it from client, we can set the select property to false for it. So with
-this, we can permanently hide that field from the output and therefore from the client (don't send them).
-
-
-Right now if user requests some fields in fields parameter in query string except situations like ?fields=name, ... (everything
-except __v) the __v field would send to client.But if user doesn't specify any field, __v wouldn't send by server. You can don't
-send the __v at all, like what we did below. BUUUUUUUUUT! Disabaling __v or version key is NOT recommended and also you can't do it
-with something like: fields = fields.concat(' -__v'); because mongoose would throw an error and say:"Projection cannot have a mix of
-inclusion and exclusion." and this is very clear. Because the user specifies some inclusions in query string and after that in code,
-we are excluding something and both of them in a request are not allowed. So because of that it would give an error.
-If you want to disable version key or __v, you must do it in the schema, by saying: (which is not recommended)
+/* 111-1. Section Intro:
+
+
+112-2. Debugging Node.js with ndb:
+There are different ways of debugging nodejs code, for example we could use vscode for that, but google released an amazing tool called NDB.
+
+NDB (node debugger): Is a npm package. So npm i ndb --global (you should install it as a global package and on mac, you need global permissions).
+But if you want to install it locally, you can install it as a dev dependency.
+After installation add a new script in package.json and call it debug and that script would be sth like: "ndb <entry point file>" and this is gonna work
+no matter if you installed ndb locally or globally. Now you can run this script instead of nodemon, because ndb will start the server
+as well and it would then try to do this in the same port of nodemon command so it's not gonna work. So we need to finish the command that
+is currently running and then run debug script.
+
+Then a new chrome window should open, which is called a headless chrome, but it's not a real chrome.
+
+There, on left side, we have our complete file system, down there, we also have access to our npm scripts which we can actually run from there.
+We also have a console tab up there and there, you can see your server's console.
+
+We can click on files on left side and edit them, right in the debugger. So for example let's say that we find a bug and we then want to fix it
+right away and we can do that right in the debugger and it will then update the original code in your IDE.
+
+In ndb we can set a breakpoint on one of our route handler functions and then send the request to the route that this function is
+responsible for it and see the variables in it.
+So we find out that when we set a breakpoint on a line of code, our code will stop running at that line where we defined a breakpoint.
+In other words our code will froze or stuck at that point. We can define breakpoints in debugger, where our code will then then stop running
+and it will basically freeze in time and we can then take a look at all our variables.
+
+When you set a breakpoint, you can see it on right side on the breakpoints tab as well.
+Now our app is already running at this point and it's waiting for reqs to come in and now we can right click on the ndb window and then
+click on 'Run this script' and it will then run the script again and then on the right side, that it says 'Paused on breakpoint' and so
+all the code that is above that breakpoint, has already executed at this point and so we can now take a look at the variables by:
+1) hovering on them.
+2) at the end of each line, the values of variables are also shown
+3) on the right side and in Scope panel
+
+In Scope panel, you can also see the five variables that we have access to in all modules. Like: __dirname, __filename, require(), module,
+exports, so these are the five variables that are available in eaach and every module and actually, when we execute the code like this(in the
+debugger), we can see that our entire code is in fact wrapped into a function which is:
+function (exports, require, module, __filename, __dirname) {<our code>}
+So this wrapper function that gives us access to those five variables.
+
+You notice that in app variable(which is basically the express application that we export from app.js) which is the express application variable,
+we have a function(method) called _router and it has a property called stack which is the middleware stack that we have in our application.
+There, we have some <anonymous> middlewares which are probably the middlewares that we created ourselves, like a middleware that has only
+a log in it that says: "Hello from the middleware" and another one is the middleware that sets a requestTime property on req object.
+Also you can see our routers there and inside each of them, you can see a property called regexp that specifies the route for which it applies.
+So with this, we can see how an express application works behind the scenes.
+
+In Global variables,(on right side), we have the process variable which is available everywhere and there we have process.env which is where
+all our environmemt variables are stored.
+
+So if a user just sends a request to api, if that line must be executed in order to send a response to the user, it won't and simply
+the user won't get any response and request-response cycle will stuck at that line.
+Now if you want to resume the execution of code after that breakpoint, you can use F8 (run script execution) button.
+Which will continue the execution of code until next breakpoint(if there isn't any breakpoint after this breakpoint, it will run
+the code till end.) and if there is no more breakpoint, our app would be really running.
+
+You can set a breakpoint at the res.status(200)... line of the handler function that you will send a req to it, to see the variable values there.
+
+So with debugger and breakpoint and seeing the value of variables, we can freeze our code in time, instead of using a lot of console.log()s.
+
+if you pause the execution with a breakpoint and after some time, you resume the execution, in postman, the Time, would show all of the time that
+it was hanging around and was waiting to get the response!
+
+Learn: Remember that when you set a breakpoint earlier in the code , if you for example send a request to where the code that has a
+ breakpoint must run, the response won't back until you remove that breakpoint. Because we basically stop the execution of further code in
+ breakpoints. Right?
+
+For checking if a function works correctly or not, you can set a breakpoint on where that function would be called and then step into it to
+see the values, so if you want to see the values in limitFields function, set a breakpoint on the line that the limitFields gets called, so
+on the line that we have limitFields() and after triggering that breakpoint, we know that all the lines before that breakpoint are already
+executed and now we can use the step tool, so you can use step(F9) button to go to next line that gets executed, by each click on that button.
+In ndb, the step tool will execute the next line of code after breakpoint. For example if our breakpoint was on this line:
+...
+.limitFields()
+...
+After finding the bug, you can correct the bug right in the debugger and then save and then it will come back to some lines before, so you
+can hit step button to get to the line that the error happened previously to see the new value of that variable that had error.
+
+You can also step our of the current function too, with it's specific button in step tools.
+
+If we use step, the next line is the code that is inside the limitFields() method. So with using step tool on this breakpoint, we will
+go to the first line of that method (the lines that this method has defined)*/
+/* 113-3. Handling Unhandled Routes:
+Let's first write a handler for undefined routes. So basically for the routes that we didn't assign any route handler function yet.
+Currently, for a route that we don't handle it with a handler, if we send a req to it, we would get error in format of a html !!! So express
+automatically sends that html code which it's main content is "Cannot GET <requested route>" along with a 404 not found status error code
+in case that there is not any handler for the route that was requested.
+Now there's also another situation, which is if we send a request to a route that accepts a route param but we didn't send that expected
+route param but sth very different, this is also another situation that we need to handle.
+For example: Let's say we have a route that accepts a req param like: 127.0.0.1:3000/api/v1/tours/:tourId , but in request, we send:
+127.0.0.1:3000/api/v1/tours/qwerty , now the res says:
 {
-    versionKey: false
+  ...
+  "message": "Cast to ObjectId failed for value \"qwerty\" at path \"_id\" for model \"Tour\""
+  "name": "CastError",
+  "stringValue": "\"qwerty\"",
+  "kind": "ObjectId"
 }
-
-100-18. Making the API Better Pagination:
-We must allow users to only select a certain page of the results, in case we have a lot of results.
-
-Now how are we gonna implemnet pagination using query string?
-We will use the `page` and `limit` fields.
-ex) 127.0.0.1:3000/api/v1/tours?page=2&limit=50
-
-For this we must use page and limit fields in query string. The limit field is the amount of results that we want per page and
-the limit() in mongoose does the exact thing that I mentioned. So it is amount of results that we
-want in the query and the skip() is amount of results that should be skipped before actually querying the data. For example: ...?page=2&limit=10
-The prior query string the user wants page number 2 and each page must have 10 results. So it's clear that the results 1 to 10 are one page 1 and
-11 to 20 are on page2, in other words we want to skip 10 results before we actually start querying and 21 to 30 will be page 3 and ... .
-So it would be skip(10).limit(10) in mongoose.
-So in order to implement pagination, in mongoose, we want the skip() and limit() methods.
-The limit() method is actually exactly the same as the limit that we defined in the query string. So it's basically the amount of results
-that we want in the query.
-
-Another example: If user wants page number 3, first, 20 results would have to be skipped.
-So we need some way of calculating the value we pass to skip() , based on page and limit values.
-
-But you might ask why we do not directly asked for skip value in query string from user?
-Because for user, the skip value is abstract. In other words, for user, it's much easier to not deal with skip value. So the user just should
-say, "I want page number 6" and not specify the skip value.
-We want some default values for page and limit too.
-So we still want pagination even if the user does not specify any page or any limit. Because we don't want to show ALL of the results
-for user's request.
-So we can define some variables for default pagination. The default value we choose is page = 1 and limit=100 , so that by default when
-a user requests ALL of the tours(so it means he didn't specify any limit or page value), then he'll only get 100 results and not ALL of the
-docs.
-
-Important: The values of parameters in query string are always string.Even if we define number for values. So if you write:
-req.query.<field in query string> , it would gives us the value of that parameter in query string and that value would be a string.
-For example: ?page=2 , The value would be string not number. So 2 in this example is a string not number.So for further calculation it's better to
-convert it to number. So we can multiply it by 1. So each time that is a number in query string it will be a strung, so we need to fix that,
-simply by multiply it by 1.
-Learn: The const variable = <value> || <default value> is how we define a default value for a variable.
-So for example if user didn't specify the page number, the value for page number would be 1
-Ideally the user would only specify the page number that he requests and not even bother with the page limit, that's for more specific use cases.
-so the page limit would be 100 in that case that user doesn't specify it.
-
-The skip variable represents all the results that come before the page that user requested. So for example if user requests page number 3 with
-the limit of 10, the results would start from 21 till 30 . So we must skip 20 results before that and 20 results is 2 * 10, so 2 * <limit> and
-2 * 10 is (3 - 1) * 10 and here, 3 is the page that we're on. Here, (page - 1) means the previous page.
-Important: Formula for pagination:
- const skip = (page - 1) * limit
-
-So (page - 1) * limit result, is amount of the results that come before the page that we're ACTUALLY requesting now(we actually need).
-
-Also if user requested a page that is not exists(for example we have only 5 docs and user requested: ?page=4 , so in this request, the limit
-would get a default value which is 100. So the skip for the previous request would be 3 * 100, so we're skipping 300 docs of db, but we have
-only 5 docs, so the results would be none. We want to throw an error instead of returning zero results for client and this situation happen when
-there's the page parameter in query string. So we must do it in an if statement).
-
-So if user requests a page that does not exist(means we don't have enough results to having that page number that user requested), we throw an error
-and this situation happens, when there IS a page key string, on the query.
-Only in this case, we will test if we are skipping more tours(docs) than we ACTUALLY have, so:
-const numTours = await Tour.countDocuments();
-
-On a Model.prototype like Tour, we can use countDocuments() method.
-Now if the number of docs that we skip is greater than the number of docs that ACTUALLY EXISTS, then that means the page doesn't exist.
-So we throw an error in case that we're trying to skip more docs that we ACTUALLY have.
-
-Why we're throwing a new error in that if statement?
-Important: Because if we throw a new Error in a try block, it will automatically and IMMEDIATELY move to the catch block and in there it
-  would send back the 404 response.
-We will create a better error handling later.
-
-Currently, the error that we specify in the throw new Error() that we just implemented, doesn't get shown in postman! Why? I don't know, so
-that message property is just an empty object and hasn't the string that we specified in throw new Error() , but it DID enter the catch() {} block.
-NOTE: BUT!!!!!! you can also not throw any error and just return an empty result, you can see this in apiFeatures.js
-
-If we pass that if statement that checks req.query.page for checking if we're trying to skip more docs that we actually have,
-our query will then be awaited at last, instead of chaining more mongoose methods to it and at that point, our query MIGHT look like:
-query.sort().select().skip().limit() and note that what allows us to do that, is that each of these methods that I mentioned here, will always
-return a new query that we can then chain on the next method and the next method and ... until we finally await the query, so that it can
-actually give us our docs.
-
-The next feature we're gonna implement, is not gonna use one of these query methods.
-
-Remember: In each feature we're chaining some methods on our query to make it more specific and at the end we await for executing that query
-and the chaining of methods on query is possible because each mongoose method for queries are returning a new query itself. So we can chain the
-next method and next method ... until we finally await the query.
-
-Remember: In the pagination feature, we shouldn't first check if the page and limit parameters in query string are exist.Because if even
-there isn't any page or limit in query string, we set them a default value. But if we check the existance of them first and they don't exist,
-we never reach the codes that set the default value.*/
-/* 101-19. Making the API Better Aliasing:
-We can provide an alias route to a request that might be popular. For example, we might want to provide a route, specifically for the
-five best cheap tours.If we'd use our regular route with the filters and sort and with all the features, the request would look like this:
-?limit=5&sort=-ratingsAverage,price and this query string says: Sort docs based on their highest ratingsAverage field and if two or more docs have equal
-ratingsAverage, then sort them based on their price field ascending (cheapest to most expensive).
-In case they have the same ratingsAverage, then we want the cheapest price possible, so we're gonna sort also by price.
-
-If we said: cheapest and best, we would have to sort by price first in ascending order and in case of tie in price, then the doc that has the
-highest ratingsAverage would come first.
-Important: In prior query string, if we reversed the order of those parameters, the results would be different. So it would be:
-?sort=price,-ratingsAverage and this query string says: Sort the results based on lowest price and if between two or more docs, have
-the same price, the one that has the highest ratingsAvg should come first and ... .
-
-Now let's say this is a request that is done all the time and we want to provide a route that is simple
-and easy to memorize for the user. So we need to create a new route. Let's call this new route, /top-5-cheap
-and we just need to make availabe a get request to this route.So we say .route().get()
-Now how we want to implement the top-5-cheap tours functionality? Well, in essence, what we want is actually
-still get all of the tours and make some changes (top 5 cheap of them) to them. So let's copy the tourController.getAllTours .
-We copied tourController.getAllTours , because it doesn't really make sense to rewrite all of the logic, but we need to
-apply some changes to that, right? So before calling the getAllTours route handler, we want to PREFILL some of the fields in
-the query string. Because we already know that the query string for this route would look like:
-?limit=5&sort=-ratingsAverage,price (with some more stuff).
-The solution is to run a middleware, before we run the getAllTours handler and that middleware function is gonna manipulate
-the query object that's coming in.
-So let's create aliasTopTours middleware. (This middleware needs to have the next arg (third arg) in order to call the next
-middleware or handler). With this arg, we call the next middleware that is in the middleware stack.
-
-In this new middleware, we need top 5 cheap tours.
-Remember: What we're doing in this middleware is basically prefilling some parts of query object that is related
-to top 5 cheap tours.So as soon as we arrive to getAllTours function, the query object is already prefilled even if
-the user didn't put any of these parameters in the query string.
-We need to pass everything to req.query, in string format, even numbers. Because the nature of query string
-is everything is string. So for example, I set req.query.limit to a string and not a number.
-Also make sure that in sort() method, you don't place any whitespaces. Because in query strings
-there isn't any whitespace. So also you shouldn't place any whitespaces when you're chainging the value of query string,
-yourself.
-Also let's specify some fields instead of all of them.
-So in essence, what we're doing in aliasTopTours() , is to prefilling the query string for the user, so that the user doesn't have to do it
-on his own.
-
-Important: Mongodb will search ENTIRE database and THEN sort the docs. Because .find() method, had come first and then limit just 5 results
-that are in top.
-
-Remember that still the whole router is still mounted onto that /tours route , so we have a kind of mini application on that /tours .
-
-102-20. Refactoring API Features:
-Currently, we implemented some features for getAllTours() and it's messy also imagine that we wanted to use these same features for another
-resource, it wouldn't be good to copy the code form getAllTours() and use it in other resources. So with a class that has one method for each of
-those api features or functionalities, if you have multiple resources for API, it would be very easy to use the same functionality
-that other resources have, because we have a reusable class, that we can use for each resource.
-
-The constructor() method in class gets automatically called as soon as we create a new object out of that class.
-
-The query that we pass to constructor() is the mongoose query and queryString is req.query(which is coming from the route) and we're
-passing the query in this constructor, because we don't want to query data, INSIDE this class.
-Because that would bound this class to the tour resource(a specific resource), but we want this class to be as reusable as possible.
-Also we don't have access to req.query in this class, because it's not a middleware and it's not in () of .route() in tourRoutes() .
-So we need to pass in the query string or req.query to this class.
-
-The goal of this class is when we create an object of this class, we chain the methods of this class on the object and this means all
-of the methods of this class is gonna run one after another. But don't worry, we have if statements in the beginning of most of this
-methods that check if some parameters in query string are exist, then if exist the method will run. But for filter() we don't need to
-wrap it in if statement. Because it doesn't need.
-
-After calling filter() , this.query will then have that new find() method on it, so it is stored on that this.query and later on we will have
-all those methods which all of them will manipulate this.query , so that in the end, this.query is the query that we want to execute.
-
-Important: So we always kept manipulating the query variable, whether we're in a route handler or in APIFeatures class. We kept adding more and more methods
- to it until then, executed it by the end by awaiting on it.
- We can add another query obj to query like this in a route handler:
- query = query.skip().limit()
- or like this in a class:
- this.query = this.query.sort(sortBy);
-
-Tour.find() is a query object.
-Important: When we are chaining methods on something we must look at the result of previous chain or previous method. So when we have
-features.filter().sort() we must look at the result of features.filter() , because .sort() is chained on result of features.filter() .
-So we must keep attention on returning value of features.filter() in order to chain something else to features.filter() .
-But we know that features is an object that has access to filter and sort and other methods. So we can chain one method to on it and
-that's gonna work.But result of features.filter() right now, doesn't return the features object, so we can't again chain another method
-on it (in this case we can't chain .sort() on it.). So we must return the object in filter() in order to be able chain another method
-on it and also do this for sort(). So in methods of this class in the end we say: return this; with this code, we return the APIFeatures
-object, so we can chain methods of this class on the result of previous chaining.
-So remember that all of this chaining here, only works because after calling each of these methods, we always say: return this
-and this keyword in this case, is the object itself which has access to each of these methods and therefore making it possible to chain them.
-
-Remember: When you want to add some methods to a object (remember it must be an object. Because non-object can't have a method) you must SAVE
-those methods to that variable so we would have an assignment operation,
-so you can say:
-let <variable> = <some code>;
-<variable> = <variable>.method();
-
-I commented out these lines, because if user requests a page that does not really exist, is not really an error and
-the fact that there are no results, is enough for user to realize that the page that he was requested doesn't contain
-any data. So we don't need to throw an error to user. But I kept that code anyway in APIFeatures class.
-Also another reason for commenting out this piece of code is that in this code we are awaiting for our query, but
-the main goal is to add mongoose methods to query property and after creating an object and chaining the methods on
-objects, await the query property of object. So we can't await the query in the middle of our code.*/
-/* 103-21. Aggregation Pipeline Matching and Grouping:
-Aggregation middlewares:
-mongodb aggregation pipeline is a mongodb framework for data aggregation
-
-Mongodb aggregation pipeline: The idea is basically we define a pipeline, that all the docs from a certain collection, go through
-that pipeline, where in that pipeline, they are processed step by step in order to transform them into aggregated results.
-For example we can use aggregation pipeline in order to calculate averages or calucalating min and max values or we can calculate
-distances.
-For that, let's create a new handler function in tourController.js , because later on, we will then define a new route and then use that
-function for that. But we're gonna create that new route later.
-
-The full name of this route handler function is getTourStatistics().
-The aggregation pipeline is a mongodb feature, but mongoose of course gives us access to it, so that we can use it in the mongoose driver.
-
-First we use our Tour model in order to access to tours collection and then use aggregate() method on the model.
-Using an aggregation pipeline is a bit like doing a regular query. But the difference is that in aggregations, we can
-manipulate the data in a couple of different STEPS. So we must define these steps and for this task, we pass in an array that is
-called stages. So the docs will then pass through these stages one by one, step by step, in the defined sequence of stages that we defined.
-So each elements in that array would be one of the stages.
-
-In documentation of mongodb go to reference>aggregation pipeline stages
-
-Each one of the stages is an object and for the value of $<stage>, we would write a mongodb filter object.
-
-$match stage is to select or filter certain docs. In other words, it's just like the filter object in mongo.
-
-EX) In the query, we only want to select documents which have a ratingsAverage greater or equal than 4.5
-const stats = Tour.aggregate([
-  {
-    $match: {ratingsAverage: {$gte: 4.5}}
-  }
-]);
-
-Usually the $match stage is just a preliminary stage, to then PREPARE for the next stages which come ahead.
-
-$group stage allows us to group docs together using accumalators and an accumelator is for example, calculating an average.
-So if we have 5 tours and each of them has a rating, we can then calculate the average rating using $group.
-
-The first thing that we need to ALWAYS specify, is the _id, because this is where we're gonna specify what we want to group by?
-For nothhing(everything in one group), we pass null to _id
-
-
-For now, we specify null for _id in $group, because we want to have everything in ONE group.So then we can calculate the
-statistics for all of the tours together and not separate it by groups. But later, we will group docs based on different stuff.
-For example we can group by difficulty and then we can calculate the average for easy tours, the average for medium tours and ...
-Recap: We can group docs by one of our fields and we're gonna specify that field in value of _id inside $group object.But for
-now we want calculate the average for ALL the tours together in ONE big group. So for having one big group for all
-of our docs that are inside a collection (we are specifying that collection, when we are creating the model), we set _id to null.
-
-Now let's actually calculate the average rating and in order to do that, we specify a new field called avgRating and we passed it yet another
-object, because we wanna use a mongodb operator called $avg and we pass the name of the field to that operator and I know this sounds weird,
-but in order to specify the field(name of the field) which we want to calculate the average from, we need to use the dollar sign but in qutoes and
-then the name of the field, so:
-avgRating: {$avg: '$<name of the field we wanna calculate the average from>'}
-So it's weird but this is the way that the aggregation pipeline works.
-
-Now we need to add another route in our routes and name it /tour-stats and not /get-tour-stats , because the word 'get' is already defined in the
-http method, so no need to repeat it in the name.
-Remember: When you want to pick a name for a route, it's good to not use a verb, because the verb is kind of defined in HTTP method name.
-So for example for pick a name for our tour stats, we don't name it '/get-tour-stats' but '/tour-stats' . But it's not a problem
-that use verbs in name of route handler functions.Like getTourStats() .
-
-For the value of $avg, we specify the name of the field inside quotes not inside an object.
-Remember: We specified the avgRating and avgPrice arbitrary. In avgRating we are calculating average of all of the doc's average ratings.
-In other words, $ratingsAverage is for each doc but avgRating is just one value for all of the docs.
-
-Remember: <model>.aggregate() is gonna return an aggregate object (but for example, .find() would return a query),
-but we need to await it for it to actually comes back with the docs.
-
-As you can see, in the code for creating aggregation pipelines, we specify the fields in collections in this format:
-'$<name of field>'
-
-
-Now we want to calculate the total number of ratings that we have and also the total number of tours and let's put those properties before
-the average properties in pipeline.
-
-Important: For getting the number of docs in collection, we can add 1 to $sum for each of docs.So it would be:
- <name of field(arbitrary-for example: numDocs)>: { $sum: 1 } , so in this example, $sum: 1 means add 1 for each of the docs that's gonna
- go through this pipeline.
- So at the end it would be total number of docs.
- So for each of the docs that is gonna go through this pipeline, 1 will be added to the name of the property. In our code, the
- name of property is numTours.
-
-So totalStats is the statistics for all the tours docs TOGETHER.
-
-Let's group our results based on different fields.
-Important: When we set the value of _id to a value other than null, we basically say: Group docs by that specified field in
- value of _id, so each doc that has the same value of _id would go inside one group. So when _id: '$difficulty', each doc
- that has a difficulty of easy, would go inside same group and for each group, mongoose will calculate the specified properties
- that are in further. For example it would calculate the numTours and avgRating properties for each group of difficulties.
- So: _id: '$difficulty'
-With this example, we have the docs grouped by similar values that they have on difficulty field. So docs that have easy value for
-difficulty field would go together(in this case, because we have an aggregation properties, all the docs that have easy difficulty
-would their price and ..., be calculated in a grouped object and ...). Look at the response of postman for this route(/api/v1/tours/tour-stats).
-
-We can use this route to get all kinds of insights into our data, for example the easy tours has the poorest rating and ... .
-
-if you group the fields based on ratingsAverage, so:: _id: '$ratingsAverage', you can see that we have 2 tours(numTours: 2) with the rating
-of 4.5(_id: 4.5 - because we set the _id to be '$ratingsAverage'), 2 tours that have 4.5 as averageRating and ... .
-
-We can make the name of the field that we group by(the string that we pass to _id in $group operator), to become upper cased, by using $toUpper
-operator. So the names would become: _id: EASY, _id: DIFFICULT and ... .
-
-$match is like a precondition that docs which match that condition would enter the next stages.
-
-We can also add another stage that sits besides of stages like $match and $group and it's called $sort . In the object we pass to
-$sort, we need to specify which field we want to sort this by?
-So it would be an object like prior stages which sits in the array that we pass in to aggregate() method. In $sort stage, we need to
-use the the field names that we specified in the $group stage, we can no longer use the old names because at this point they are already gone, they
-no longer exist. So at this point in the aggregation pipeline, we already have some docs that their field names are the names that we passed in
-$group and so if you for example wanna sort by average price, the name of the average price field is now avgPrice.
-
-So you must use the new field names (if they exists). Because when we're using $group , we may use some new field names for property keys.
-In this case our actual field name is averagePrice in db, but we used avgPrice in $group.So we must use the new field name which is avgPrice in $sort stage.
-In $sort stage, 1 means ascending(lowest one comes first).
-
-Remember: We use $sort stage for more than one groups. So in our code it's none sense to use $sort for totalStats. Because
-it would have just one group of data.
-
-We can also repeat stages.
-
-$ne is a new operator and it's meaning is not equal. In statsBasedOnDifficulty basically we're excluding the group that
-has the _id set to EASY(so we're selecting all the docs that are not EASY(why EASY and not easy? Because remember we set the value of
-_id field to be $toUpper with $upper operator)).
-
-In our example, we matched(used $match) once before we actually did the group and then we matched once we were ready doing the grouping.*/
-/* 104-22. Aggregation Pipeline Unwinding and Projecting:
-We're gonna solve a real business problem
-
-Problem: Implement a function that calculates the busiest month of a given year.
-So basically by calculating how many tours start in each of the month of the given year.
-We can solve this, using aggregation pipeline.
-
-First create the function in tourController and we're gonna call it getMonthlyPlan() and after this create a route for this function.
-Let's call it '/monthly-plan/:year' and we need a url parameter called :year .
-
-Each of our tours(docs) has an array of startDates and we want to count how many tours there are for each of the months in a given year?
-If we wanna add all of this together, the easiest way would be to have one tour for each of those dates and we can do that using aggregation pipeline
-and there is a stage for doing exactly that and it's called $unwind.
-
-Remember: For the things that you want to pass in to .aggregate() method, first you pass in an array and then in that array
-we pass in one object for each of the stages we want and then for the name of the key of that object, we write the name of stage like $unwind.
-Actually we want to count how many tours exist for each of the months in the given year.
-Learn: $unwind stage deconstruct an array field from the input docs and then outputs one document for each element of the array and in
- our problem we want to have one tour for each of the elements in startDates array field. So for the value of $unwind we specify the
- field which is an array and we want to deconstruct that array and make each of the elements in that array, a separate document.
-
-When we use $unwind on a field specified as the value of $unwind, in results, we no longer would have that field as an array and
-now we have each element in startDates array as a separate field. So now, each doc has a field named startDates BUT that field has only
-one value instead of an array.
-EX) We had a doc with the name of "The forest hiker" with startDates of april 25th, july 20th and October 5th and now, after unwinding,
-we have 3 separate forest hiker docs, one with startDates of april 25th, one with july 20th and one with October 5th. So one doc has
-been deconstructed based on the field we passed to $unwind into 3 separate docs.
-
-So now we have one document for each of the startDates.
-
-After $unwind stage, we must select the documents for the year that user was passed in.
-$match stage is to select docs and the year is in the startDates field and so startDates is the one that we're gonna search for and we
-want the date to be greater or equal than january 1st of the current year(the year that user sends in) and we want it to be less than or
-equal of January 1st of the next year of the year that user sent.
-
-The results we want to send to user must have a same year that user passed in.So we can use $match to send the
-results that have a same year which user requested. So we want the tours in the year that user requested. So the startDates of these
-tours must be in the year that user requested in other words, the startDates can be from first day of year until last day of year.
-
-Learn: $match is just for select some docs based on some conditions.
-
-Remember: The value of $group stage must be an object which we have a field called _id in that object and the docs will group together
-based on this field.
-
-Important: The key of a key-value pair in stage objects can not be the name of a field that has a $ and quotes around it.
-
-Important: The _id field would be usually in $group stage and maybe other stages. In $group with this field we can group docs that have the same field
- which is specified in the value of _id.
-
-In this problem we want to group docs based on their month. BUT currently we have the ENTIRE date, not only the month. So we have the year, the month,
-the day and even the hour and ... .But we want to have only the month to group them. For this task we can use another new mongo operator.
-It's called $month which is an aggregation pipeline operator and it returns the month as a number. So it would basically EXTRACT the
-month out of our date. For value of this $month operator, we pass it the name of the field that we want to extract the month from it.
-Now after specifying the _id for grouping which is grouping them by the month, we can specify the real information that we want
-for each of those groups(for each of the months) is how many tours START in that month?
-We can count the amount of tours that have a certain month.
-
-Learn: In $group stage, after specifying the field that you want to group docs based on that field, you should specify the
- data that you want to see in EACH GROUP. That data could be the number of docs in each group, or average of a field in each group,
- or highest (maximum) of a field in each group and ... . In this case we're counting number of docs in each group and the ARBITRARY key name
- for that field is numTourStarts .
-Then, we use $add and for each of the docs we want to add 1, so: $sum: 1
-
-After calculating number of docs in each group, we need some more information about which tours are in this group and not just the
-number of docs in each group. So we can specify an arbitrary name for the key that we want to show the information of tours (which I named it tours)and
-then because possibly we have more than 1 tour in each group, we must show their information in an array, right? Because if you
-don't want to use an array, for this, how could you show the information of 2 or 3 or ... tours in one field?
-Learn: So for creating an array, so we use $push to push the name field of each document that goes through this pipeline for EACH GROUP.
-So for value of $push, we specify what we're gonna push into that array, as each document goes through this pipeline, is simply the name field
-of that doc, for example the $name field(so the name of a field in each doc).
-
-Now we want to change the name of _id field that we currently get for each group, which we haven't access to that directly, it's a bit tricky.
-(not really changing the name of field, instead, we add ANOTHER field which will have the same value as the field that we wanna kind of change
-it's name, so that later on, we can delete that _id field(the field that we wanna change it's name, again, kind of!).
-
-The solution is we can add another field which has the exact value of _id (the value of _id field is '$_id')
-in each group but with a different name and after creating that new field which is gonna be exist for each group,
-we can delete _id field from each group and now we have a new field which has the same value for each group.
-
-Learn: In $addFields stage, we must specify the NAME of the field that we want in the key of $addFields object and the value of that key is the actual value
- of that newly created field.
-
-Now we need to delete the _id key-value pair from the groups. So we can use $project stage. For the value of $project, we give it an object
-and in this object we can exclude or include some fields. In $project, we give each of the field names a 0 or a 1.
-
-In the value for $sort stage, the key name is the field name that we want to sort docs based on it and the value of that key is 1 or -1
-1 is for ascending, so with -1, the highest one starts at the beginning and gets lower.
-
-In this case and in $limit stage, we specify we want to have 12 results (in this case, it would say that we want just 12 groups.)
-*/
-/* 105-23. Virtual Properties:
-Let's return to data model context and see some features that mongoose offers us in order to model our data and the first one is virtual properties.
-
-Virtual properties are basically fields that we can define in our schema but that won't be persisted. So they won't save into
-database in order to save us some space there and most of the time of course, we want to really save our data to db, but virtual properties make
-a lot of sense for fields that can be derived from one another. For example a conversion from miles to kilometers. (We know that
-miles and kilometers are derived from one another). So it doesn't makes sense to store these fields BOTH in the db, IF we can
-easily CONVERT one to the another. Now let's define a virtual property that contains the tour duration IN WEEKS.So that's a field
-that we can very easily CONVERT it from duration field that is currently in our model and it's IN DAYS (so we want to CONVERT it
-to weeks-therefore we can use a virtual property).
-Learn: For defining virtual properties on a schema, we must define them ON THE VARIABLE that contains the schema. In this case,
- that variable is tourSchema.
-
-We pass in the NAME of that virtual property in .virtual() method.
-
-Why we use .get() method on .virtual() in our code? Because that virtual property will be created each time that we GET some data
-out of database so that get() method called a getter and in that .get() method we pass a real callback function (NOT AN ARROW FUNCTION!)
-Now how do we then define the virtual property?
-We just return the value for that virtual property from the function that we passed to get() .
-
-Why we divide duration by 7? Because we want duration in weeks not days, so we divide it by 7.
-
-Why we used regular function (a function with function keyword) in the callback for .get() ?
-Learn: Because remember, an arrow function does not get it's own `this` keyword which in this case we actually need the `this` keyword in the function.
- Because in that function, `this` keyword is going to point to the current document.
- So usually when we want to use `this` inside a function (doesn't matter in callback or normal function or ...), we should always use
- the function with function keyword.
- Tip: In mongoose we usually use functions with function keyword.
-
-So the durationWeeks field is not gonna persisted in db, but it's ONLY gonna be there (in db ???) as soon as we GET the data.
-Now this virtual property won't be in the results and that's because we need to explicitly define in our schema, that we want the
-virtual properties in our output. How we gonna do this? Remember that in parentheses of mongoose.schema() , we can pass in not only the
-object which has the schema definition itself, but also an object for the schema options which is the second arg of mongoose,schema() .
-So the first arg of mongoose.schema() is that large object which is the definition of schema itself (fields and their types and ...) and
-the second arg is an object which has options for schema.
-Now we can do our task in this second arg of mongoose.schema() .
-
-In toJson we're saying: Each time that the data is outputted as json, we want virtuals to be true. virtuals to be true means that
-the virtual properties must be part of the output.
-
-toObject means when data gets outputted as an object, also we want the virtual properties to be in the results too.
-
-Now by setting these, we should be able to see our virtual properties in results.
-
-Important: We can't use virtual properties in queries to db. Because they're technically not part of the database. So we can't say
- for example: Tour.find({durationWeeks: {$eq: 1}})
-Of course we could also do this conversion each time after we query the data, for example like in a controller, but that would not be
-the best practice.Because we want to try to keep business logic and application logic as much separated as possible (fat models and thin
-controllers- which says that we should have models with as much business logic as we can offload to them and thin controllers with as
-little business logic as possible) , so virtual properties are a good example of how we can acheive that kind of architucture. Because
-knowing the durationWeeks is a business logic, because it has to do with business itself(like the tour company!) and not with stuff
-like requests(things that do in code and express.js are application logic) and responses and so we do the calculations for business logic in model
-where it belongs and not in controllers.
-
-106-24. Document Middleware:
-Just like express, mongoose also has the concept of middleware and first type of them in mongoose is called document middleware.
-So just like express, we can use mongoose middleware to make something happen between two events. For example each time a new document is saved to
-the db, we can run a function between the save command is issued and actual saving of the doc or also AFTER the actual saving the doc and that's
-a reason why mongoose middleware is also called pre and post hooks.So again because we can define functions to run BEFORE or AFTER a certain
-event, like saving a data to db.
-
-There are 4 types of middlewares in mongoose: document, query, aggregate and model middleware.
-Learn: Document middleware can act on the currently processed document. So just like virtual properties we define a middleware on a
- schema.
-
-pre() middleware is gonna run BEFORE an actual event and that event in this case is the `save` event and the callback function for this
-.pre() method will be called before an actual document is saved(our event) to the db. So this is a document middleware which is gonna
-run before the .save() and .create() command BUT NOT ON insertMany(). So if we use .insertMany() , the document middleware won't be
-executed or in other words insertMany() won't trigger the save event document middleware.
-So the document middleware will only be executed on .save() and .create() .
-
-Learn: In a save middleware (a middleware which would trigger on the 'save' event), the this keyword is gonna point to
- the currently processed doc and this is the reason why it's called document middleware.
- So because in the callback function for .pre() method, we have access to the document that is being processed and in this case
- we have access to the document that is being saved with this keyword.
-
-Now in order to trigger that callback function, we need to run a save() command or create() command. So we now need to CREATE
-a new tour using our api in order to trigger that middleware (why create would trigger this callback function? Well as I mentioned
-before, create and save commands would trigger this callback function or this middleware).
-So now if you console.log(this) in that middleware and then create a new tour, it would log to console the document(and even it's virtual
-properties) that was created RIGHT BEFORE it SAVED into the database and because at this time we haven't save data to database we can act on the data and
-the place that we act on data BEFORE it's saved to db is inside the callback function for .pre() .
-
-Now in this callback function we want to create a slug for each of the docs.
-Learn: A slug is basically just a string that we can put in the url, usually it's based on some strings like name.
-In this case, we're gonna create a slug based on the tour name. So we must use slugify package as a dependency and then require it
-in our model file. So install that package.
-For create a slug for the currently processed doc, we create a new property on the doc called slug and we assign slugify() to this
-new property and in parentheses of slugify() we pass it the string that we want to create a slug out of that string. So in this case
-we want to create slug from the name property of each document. So we must pass this.name to slugify().
-In our case, the second arg of slugify() is an option that is saying that everything should converted to lowercase, so set lower: true.
-
-In mongoose, each middleware function, like pre('save', function(){}) has access to next arg to call the next middleware in the stack.
-If you only have one pre middleware function, you won't need to call next() .
-So each middleware function in a `pre save` middleware, has access to next arg. So pass next to the function of pre() .
-
-Remember: When you define some new fields for some docs or just one doc, THOSE NEW FIELDS WON'T PERSISTED TO THE DATABASE.
-Because we didn't define them in our schema, like now. Because we added a new field to the currently processing doc in pre save middleware,
-but this field(slug field), isn't yet defined in our schema, so it won't work. So when you want to define some new fields for a doc or some docs,
-before that, you must define those new fields in the schema and if you don't do this, those new fields won't persisted to db, but other fields for
-newly created docs WILL persisted to db, because we have defined them in schema.
-So add slug field to schema.
-
-After setting up that mongoose middleware and slug property, we must define slug property which is in newly created docs in schema.
-Now when you CREATE a new doc, this new mongoose middleware will triggered and it will create a new property on that newly created
-doc called slug and the slug property on this doc is based on name property and the options that we specified in () of slugify()
-with a little difference and that difference is when you have whitespaces in name property, instead, in slug property we would have
-dash.
-
-Important: Why we even use this mongoose middleware with save event and pre() method? We used it with pre() method because we want
- to define a field that it's value is BASED on another field that was sent by user. So we must FIRST get the value of that another
- field and THEN based on the value of that another field, we define the new field and THEN we save that doc to database.
- So now tell me! How you would define the value of that new field if you didn't define this middleware? (Remember that we don't want
- our client to send that slug property for creating the doc-we should create that property OURSELVES BASED ON THE PROPERTIES THAT
- THE CLIENT SENT TO US!)
-
-In the callback function of post('save', function() {}) method, we have access to next and ALSO the document that was JUST SAVED TO DB, with
-specifying the name of that document in parentheses of callback.
-
-Learn: post() middleware callback functions are executed after all of the .pre() middleware callback functions have completed.
- So in callback function of post() method, we no longer have `this` keyword like we had in callback function of pre() access to this
- keyword which points to currently processed doc. Instead, in callback of post() we have access to FINISHED DOC by receiving that doc
- in parentheses of callback of post() by defining an argument.
- BUT I THINK WE ALSO HAVE ACCESS TO this KEYWORD IN post() callback function! Which is pointing towards the finished doc(in this case
- it's pointing towards saved document).
- Also remember that in both callback functions of pre() and post() , we have access to virtual properties. But those virtual props, won't
- stored in db.
-
-'save' event also called a hook and we called that middleware a pre save hook or pre save middleware. We can have multiple pre middlewares or
-post middlewares for the same hook. So some call it middleware and some call it hooks.
-
-Remember: If you have a pre() and a post() middleware, you MUST call next() in pre() middleware and if you don't do this post()
-middleware won't run and the request will stuck at that pre() method and also if you have multiple pre() or post() , you always
-must call next() in each of them. So it's a good practice to call next() in each of mongoose middlewares.
-If you don't call next() , the request-response cycle won't get completed and it would stuck.
-
-Important: 'save' mongoose middleware only runs for .save() and .create() mongoose methods and it's not gonna run for .insertMany()
- and also not gonna run for findOne() and update methods or findBuId(). So we must find a workaround.
-
-So we can have middlewares running before and after a certain event and in the case of document middleware, that event is usually the `save` event
-and then in the middleware function itself, we have access to the this keyword which is gonna point at the currently being saved document and the
-save middleware only runs for the save() and create() mongoose methods and it's not gonna run for example for insertMany() and also not for
-findOne() and update() or findByIdAndUpdate() , so they won't trigger the save middleware, so we will have to workaround this limitation.
-
-So this was document middleware to manipulate docs that are currently being saved.*/
-/* 107-25. Query Middleware:
-Query middleware allows us to run functions before or after a certain query is executed. Let's create a pre-find hook, so basically a middleware
-that's gonna run before any find() or findById() or ...(find methods) query is executed.
-
-The difference between document middleware and query middleware is the name of hook we used, so if the name was 'find', it is a query middleware
-and it causes that the `this` keyword will now point at the current query and not at the current document, because we're not really processing any
-docs in a query middleware, instead, we're processing a query.
-
-Why it's called query middlewares? Because for the hook, we use find or update or ... which are like queries. In pre query middlewares
-the this keyword will point at current query and not the current document, because in query middlewares we're not processing any
-document and we're really processing a query!
-
-So let's suppose that we can have secret tours in our database.Like tours that are offered internally or to vip group of people and the public
-shouldn't know about it. So we don't want our secret tours to appear on result outputs. So the solution is to create a secret
-tour field and then do query ONLY for tours that are not secret.
-First we need to define secretTour field in schema and we set default to false, so usually the tours are not secret.
-So if the secretTour field is true it means that tour if secret and we don't want it to shows up and by default a tour is not a secret tour.
-So we say: default: false , remember that default means the default VALUE of that field.
-
-Now if you want to create a secret tour, you need to set secret: true in the request body.
-
-Learn: this keyword in a query middleware is pointing to current query object. So we can chain all of the mongoose methods that we
- have for queries.
-EX) For example we can select all the docs where secretTour is not true:
-this.find({secretTour: {$ne: true}});
-We're doing it like this, because the other tours are not currently set to false(so we didn't say: secretTour: {$eq: false}), because they do
-simply EVEN don't have this field AT ALL, so we couldn't find the docs that have false for the secretTour field.
-BUTTTTT:
-It would actually work the same, if we simply said: this.find({secretTour: false});
-
-Why in filter object in find query middleware, we used { $ne: true } instead of false? Because the older tours don't have the
-secretTour field. In other words, we could just say: { secretTour: false } , but the way that we wrote the code is cleaner.
-
-In our older tours they didn't have a secretTour field and we created this field on the new doc and set the default value of that field(
-secretTour) to be false. So because we didn't specify this field in our older docs, they haven't this field in database. But our newly
-created doc have this field in db. Because we specify it for that new doc. BUT when you get all of the tours, because 1 doc HAVE that field,
-mongoose will also give that field to our older docs TOO! So now they have that new field in results but they don't have this field in DB!
-(It's kind of weird!). Mongoose did this, it's just a mongoose thing. So in database, secretTour field doesn't exist for older docs and it
-just exists for the newly created docs. Mongoose is adding that field to the older docs in results, because we have defined that field in our schema and
-that field won't be in database, so mongoose put that field in results and not db anyway!!!!!
-So secretTour for older docs doesn't exist in db, but mongoose adds that because we have it in our schema as the default, so it's putting that
-field, anyway.
-
-Recap: When you hit a route, for example: .../tours using get http method, we create a query using Tour.find() (in getAllTours()
-route handler) and then chain some methods to that query and then we execute that query, by awaiting on it. BUT BEFORE THE QUERY IS EXECUTED,
-the pre find query middleware would be executed. Why this middleware and not other pre query middlewares? Because this middleware
-is for 'find' hook and the query that would executed is also find() . So we created a find() query and therefore find hook would be
-executed and in callback function of find hook, since we're at a query middleware, the this keyword is pointing towards the current
-query. So in a mongoose query middleware , we can chain yet other mongoose methods to the current query. Like find() -like what we
-did in our code and then we're saying: Just give me the docs that haven't secretTour field of them is set to true. So we're saying
-just give me the public tours and not the secret tours.
-
-Now there's one thing to fix. Because our query middleware with 'find' hook would only run for find() query and not findOne() .
-So if we send a get request to '...?tours/<the _id of secret tour>' , it would give us the secret tour in result! and we set things
-up in pre find mongoose middleware, so the tours that have secretTour set to true shouldn't appear in results and they would filtered
-out IN ALL OF OUR ROUTES OR ALL OF THE REQUESTS THAT CLIENTS SEND TO SERVER, like get all of the tours or get one tour or ... .
-But when you send a get request to '...?tours/<the _id of secret tour>' to check if we can get the secret tour separately, you notice
-we can! And this is not good as I mentioned and this is because in the route handler function of this route we're creating query, using
-findById() (which behind the scenes is findOne()) and this mongoose method does not trigger the mongoose middleware with 'find' hook,
-so it won't filter out that secret tour and therefore we can get that secret tour. That's bad!
-So we need to specify a same middleware also for findOne() mongoose middleware. There are 2 ways of doing that. The first one is to
-copy the current middleware and just replace 'find' with 'findOne'. But it's not good. Instead we can use a regex.
-In regular expression we want to say is that this middleware should be executed not only for 'find' but for all of the commands
-that start with the name find. Like find, findOne, findOneAndDelete() findOneAndUpdate() and ... , now all of these commands will
-trigger the callback of that middleware.
-Important: A regular exp shouldn't be in quotes or double quotes because it would evaluated as what it is! Not a really regex.
-
-So with that regex, if you send a get request for getting a secret tour, it won't show that to you.
-
-Learn: In post query middleware, we have access to all the docs that were RETURNED FROM THE QUERY and next.
-Remember: The post query middleware is gonna run AFTER the query was executed, so because the work of query has finished at that point, all of the
-docs are arrived(returned by the query) and we have access to them.
-
-Let's create kind of a clock to measure how long it takes to execute the current query.
-How are we gonna do that?
-We can set a property called `start` onto the `this` object which points to the query object in a query middleware , because
-that query object is really just a regular object, of course it has access to all those methods such as find() , but we can also use
-it to set any property that we want on it.
-
-With this, we can see the time that passed from the beginning(where we defined start property on query object or this keyword), to after the
-query has executed.*/
-/* 108-26. Aggregation Middleware:
-Aggregation middleware allows us to add hooks before or after an aggregation happens. In our code, currently if the user sends get request
-to one of a routes that it's route handler functions, use aggregate() for queries(for example if we send req to /tour-stats),
-the secret tours also would be in results and we don't want this.
-So we also want to exclude the secret tours in the aggregation like what we did in routes that don't use aggregation.
-
-So we must also create some middlewares for aggregate queries and these middlewares are called aggregate middlewares.
-Again why we want to use an aggregate middleware here? Because our secret tours are also be calculated in routes that their handler
-functions are using aggregate queries. So we don't want our secret tours to go to these aggregate queries and like find() and findAnd...()
-we want our secret tours to not go to these queries and stay hidden.
-
-One solution COULD be to exclude the secret tours(secretTour: true or sth like that) from filter object of $match stage in each
-route handler function that is using aggregation. But with this approach, we would have some repetitive code, so we would need to do the
-same thing in other aggregations.
-
-So instead of exclude them in route handler functions, let's exclude them right at the model level by using aggregation middlewares.
-In aggregation middlewares, pre() means before the aggregation executed, run this middleware.
-
-By using schema.pre('aggregate', ...); we say, we want this to happen before the aggregation is actually executed(the name of hook here, is
-aggregate).
-
-Remember: In query middleware, the this keyword points to the current query object.
-In document middleware, the this keyword points to the current doc and so in aggregation middleawre, this keyword is gonna point to the
-current aggregation object.
-
-this.pipeline() in a aggregation middleware, is simply the array that we passed to the .aggregate() method in route handlers that are responsible for the
-route that the user sent request and are using .aggregate() method in themselves.
-So with this.pipeline() , we get the pipeline that we specified before.
-
-For example if a user sends a request to a route that it's handler functions are using .aggregate() in themselves,
-this aggregate middleware would run.
-
-Now because this.pipeline() in we have exactly the pipeline that we specified in the route handler, we can filter out the secret
-tours by adding another $match stage, right at the beginning of this pipeline array.
-Remember that this.pipeline() in an aggregation middleware is an array and we want to add another element to the BEGINNING
-of this array. So we must use unshift() which is a method for arrays. Why at the beginning? Because we want to execute further
-stages based on the public tours and not secret tours, so we MUST add that stage at the beginning.
-So basically we're removing all the docs that have secretTour set to true from results, just like what we did to routes that don't use an
-aggregation pipeline.
-
-We can use shift() to add element at the end of array and unshift() to add at the beginning of array.
-
-We have also model middleware.
-
-So mongoose middlewares are cool stuff that we can add to our models. For example we could implement instance methods which are
-methods that will be available on every document after being queried, we will do this in authentication section.
-
-We can also use a post hook for aggregation middleware.
-
-109-27. Data Validation Built-In Validators:
-Mongoose offers us ways of validating data that's coming INTO our model.
-
-Validation is basically checking if the entered values are in the right format for each field in our schema and also that values
-have actually been entered for all of the required fields. On the other hand, we also have asnitization, which is to ensure that the inputted
-data is clean, so that there is no malicious code being injected into our DB or into the application itself. So in that step, we remove unwanted
-characters or even code, from the input data, so this is a golden standard in backend development, to never ever accept input data coming from a user,
-as it is. So we always need to sanitize that incoming data. We will look at data sanitization in security section. In this lecture, we focus on
-data validation and we're doing data validation right on the model.
-
-Remember: We do data validation in our model files and that's because of fat model and thin controller philosophy, which makes
-the model a perfect place to perform data validation.
-
-For example required option in schema is a built-in validator for mongoose but unique option, technically is not a validator.
-But it will still produce an error when we have a duplicate value for that field, but again that is not really a validator.
-
-Another validator which is specifically for Strings, is maxlength and minlength. These validators are working for the patch request
-for '.../:id' route, because in it's handler function we set runValidators: true . But we don't need to set this option for other mongoose
-queries like find() or delete() or ... (Just the ones that have update in them)
-Learn: Update validators are off by default - you need to specify the runValidators option.
-
-Golden security notice: Never ever accept data coming from a user as it is. So we always need to sanitize that incoming data.
-
-On Strings we have maxlength and minlength and on numbers and dates we have max and min.
-
-Learn: enum validator is only for Strings and we can pass an array of values, that are allowed.
-
-Learn: [<value>, '<error message>'] notation is a shorthand for an object of stuff and that object would be :
- {
-       values: <value>,
-       message: <error message>
+So mongodb in this case is basically trying to find a document with that "qwerty" id, but cannot convert it to a valid mongodb ObjectId. So again,
+this is a different situation. But for now, let's work on that former situation where we get error in html format.
+
+Remember: For error handling in API context, it doesn't make sense to send back HTML! So we must create a handler function
+for all of the routes that are NOT catched by our routers.
+
+Important: The app.js file is the definition of our express application.
+
+Now how are we gonna implement a route handler for a route that was not catched by any of our other route handlers?
+Solution: We know that all of the middleware functions are executed in order that they are in the code. So the idea is if we have a
+request that makes it into this part of our code (after those middlewares for our ACTUAL routes-section 3), so after the
+app.use('route', <related router or related mini application>)s in app.js (so it got passed all those route middlewares in app.js),
+that it means that neither tourRouter nor the userRouter, were able to catch that request. So it has a strange or unacceptable route.
+So if we add a middleware after those routers, it will only reached if was not handled by any of other routers.
+
+Now let's specify this middleware which is a route handler middleware.
+Now the question is what would be the http method of this route handler, get? post? ... ? Do we must write handlers for all of
+these? No, we don't want to write handlers for all of the not handled http methods. We simply want to handle all the routes(urls) for all the
+verbs(http methods), with one handler.
+So we can use: app.all() So app.all() will run for all of the verbs (http methods) in the specified route.
+Now we want to handle all the URLs that were not handled before, so we can use * which stands for 'everything'.
+So as you can see, for the second arg of app.all() or app.use() or app.get() or... , which is the handler function, we can declare
+the function right there, or we can just name the function (kinda reference it-like what we did in our routes files).
+Now let's send a regular 404 jsend formatted response there.
+
+Again: If the request was able to reach until this point, it means that the request-response cycle was not yet finished at this point in
+our code.Because remember that middleware is added to the middleware stack, in the order that it's defined in our code, so the first middleware
+always runs first and so if the route was matched in our tourRouter which is for the FIRST middleware in app.js , then, our req would never even
+reach that app.all() middleware, therefore that app.all() would not get executed, so that app.all() should be the last part after all our
+other routes.
+
+req.originalUrl is the url that user was requested it.
+
+Important: Sending a response to user, (like res.status.json() or res.send() or ...) won't stop your middleware stack IF YOU CALL next() .
+ BUUUUUUUUUUUUUUT!!!!! When you want to end the app from further execution in the middleware, you shouldn't use next() to actually end
+ the request-response cycle. Right? Like what we did here. So here we want to end the app from running further for execution code. So we
+ didn't call next() .
+
+If we put this middleware on top of all of our other middlewares for handling routes, no matter what request we send to server, it
+will always run this middleware, because our req would always now reach that first route handler and it's actually matched, because
+it matches all http verbs no matter what is it's url and therefore, it will say: Can't find this route!!! Even if we send a valid request to
+a valid route! Because the request would go to this middleware and send back to user and no other code would be executed.*/
+/* 114-4. An Overview of Error Handling:
+We need to handle our errors in a central place in our app. What we did up until this point, was to simply send back an error
+message as JSON in EACH route handler in case something went wrong.
+
+Error handling in express: an overview
+Two types of errors that can occur:
+Operational errors and programming errors.
+
+Operational errors are problems that we can predict that they will inevitably happen at some point in future, so we need to
+handle them in advance. They have nothing to do with bugs in our code, instead, they depend on the user, or the system or the network.
+So things like a user accessing an invalid route, inputting invalid data, or our application failing to connect to the database. All these are
+operational errors that we will need to handle in order to prepare our application for these cases. You will also see the term "exception" being used
+instead of error and while they are conceptually different, many people use the terms error and exception interchanbaely and we're just gonna
+call them "errors" in this course as well, in order to avoid confusion.
+These types of errors have nothing to do with bugs in our code. Instead they depend on user or the system or the network. For example:
+user accessing an invalid route
+invalid inputted data from user(validator error from mongoose)
+failed to connect to server
+failed to connect to database
+request timeout and ...
+
+We need to handle these errors in order to prepare our application for these cases.
+
+On the other hand, we have programming errors, which are simply bugs that we developers introduce into our code, like:
+Reading properties from an undefined variable
+Passing a number where an object is expected
+using await without async
+using req.query instead of req.body and ...
+
+These erros are really inevitable but also more difficult to find and to handle.
+
+When we're talking about error handling with express, we mainly just mean operational errors. Because these are the ones that are
+easy to catch and to handle, with our express app and express actually comes with error handling out of the box. So all we have to do
+is to write a global express error handling middleware middleware which will then catch errors that are coming from all over the
+application. So no matter if it's an error that is coming from a route handler function or a model validator or really someplace else , the goal is
+that all of these errors end up in one central error handling middleware. So with this, we can send a nice response back to
+the client and letting them know what happened. So really, handling in this case, just means sending a response letting the user know what
+happened, but handling can also mean, in other cases, retrying the operation or crashing the server, or just ignoring the error altogether. Sometimes,
+that's just the best option.
+
+The beauty of having a global error handling middleware is that it allows us for a nice separation of concerns. So we don't have to
+worry about error handling in our business logic or in our controllers or really anywhere else in our app. Instead we can simply
+send the errors down to the error handler which will then decide what to do with those errors.*/
+/* 115-5. Implementing a Global Error Handling Middleware:
+The goal is to write a middleware function which is gonna be able to handle operational errors like when a user hits a url that doesn't exist,
+we can consider that an operational error and we in this case handle it by sending back a res.status(404).json() , but the goal is to do that
+in one central place. All over the place we have this snippet(res.status(404).json(...)) which handle errors.
+
+Now we want to define a global error handler middleware function. Express already comes with middleware handlers out of the box.
+Now in parentheses of app.use() in app.js(we will take it to another file later),to define an error handling middleware, all we need to,
+is to give the middleware function, 4 args and express will then automatically recognize this middleware as an error handling middleware
+and therefore express will only call this middleware when there's an error.
+So just like in many other cases, this middleware function is an error first function, which means that the first argument is the error and then
+we have req, res and next.
+In this specific middleware, in parentheses of .use() the first arg MUST be the error arg and then in sequence: req, res, next
+
+So by specifying four params, express automatically knows that this entire function that we passed to app.use() , is an error handling middleware.
+
+Also to trigger this error handler middleware, we need to somehow create an error so that this middleware function is actually caught.
+
+So two steps, first we create the middleware, then in the second step, we will actually create an error so that that function(error handler
+middleware) will get caught.
+
+In this middleware, we must read the status code from the error object. Because in this middleware, we don't know what was the
+error status code? Right? It might be 400(bad request) or 404 or... . So when we create that error, in there we will define a property called
+statusCode and in this middleware, we will get that statusCode property from err object and if there was the statusCode prop, well
+we just let it be there(why create a new variable, huh?!), but if there wasn't, we will consider a default statusCode(500- means
+internal server error) and save it on err object and in statusCode prop on that error.
+Why we defined a default statusCode? Because there might be errors that aren't coming from our code, because there are gonna be
+errors without a status code, so because they haven't a statusCode in the time we are in that error handler middleware, it means they weren't
+created by us but they were created in some other places in the node application and in the same way, we would have status property on err object,
+if we define that error object in our code but if there isn't any status property on err object, therefore it was came from other places so we
+need to give it a default value.
+
+Remember: When we have 400 statusCode, it means 'fail' so status would be 'fail' and if we have statusCode of 500 it means 'error'.
+For example when we have 404, the value of status is 'fail'.
+
+After creating this global error handler middleware, we must comment out the error snippets from our previous middlewares.
+
+I commented out the codes in that global middleware for catching unhandled routes, because now we handle all of the operational errors of application,
+with one global error handler middleware. So let's create the err object, which that global error handler middleware needs.
+
+Now we want to create an error with the built-in Error() constructor.
+
+In Error() constructor we can pass a string and that string will be the err.message property in global error handler middleware.
+EX)
+const err = new Error(`Can't find ${req.originalUrl} on this server.`);
+err.status = 'fail';
+err.statusCode = 404;
+
+Learn: After constructing a new Error object from Error() constructor, you can add properties to this constructed error object like status or
+ statusCode properties and ... , just by saying:
+ EX) const err = new Error(<the message property value of err object>);
+ err.<arbitray property> = <value>;
+ So we define the err.message property automatically by passing a string to Error() constructor and THEN, we can add new properties to this
+ newly created err object, manually.
+So we defined these properies on err object, so that our error handling middleware can then use them in the next step.
+
+But now, how do we actually REACH that next step(next middleware) that I mentioned?
+As always, we use next() , but this time we use next() in a special way.
+Because now we need to pass that err object into next() .
+Learn: If the next() function receives an argument, no matter what is that argument, express will automatically know
+ that there was an error. So it will assume that whatever we pass into next() is gonna be an error and this concept
+ applies to every next function in every single middleware ANYWHERE in our app.
+ SO AGAIN: Whenever we pass anything into next() , express will assume that it is an error in the parentheses of next() and
+ it will SKIP ALL OTHER MIDDLEWARES in the middleware stack and send that arg(error) which is in next(), to our global
+ error handling middleware, which will then of course, be executed.
+So now if we pass that err object to next() , it makes the next() to skip all other middlewares in the middleware stack and go straight to the
+global error handler middleware.
+
+So now if the user tries to find a route that is not defined in our app, this middleware will catch that error and it will
+create err object with it's properties and send it to our global error handler middleware.
+
+Now we COULD go ahead and implement this snippet in this middleware which we create the err object from Error() and then call next(err) in all
+of our middlewares(route handlers) that have OLD error handling mechanism(which is by sending the res.status.json() themselves) and renew them with
+this new approach. So replacing res.status().json(...) with:
+const err = new Error('...')
+err.status = ...
+err.statusCode = ...
+next(err);
+
+But it's better to create our own Error class. So with that, we don't have to write all of that NEW snippet code that I wrote above and instead have
+a more streamlined class of ourself. */
+/* 116-6. Better Errors and Refactoring:
+Now I created appError.js in utilities folder.
+
+We want all of our appError objects to inherit from the built-in Error class. So let's extend the built-in Error class by
+our new class(AppError).
+
+Important: In parentheses of constructor() we specify what we're gonna pass into a new object created from that class that we're writing constructor() for
+ it.
+The constructor() method is called each time that we create a new object out of this class.
+
+Important: When we extend a parent class(in this case, the parent class is Error), we call super() in constructor of our new
+ class, in order to call parent constructor.
+We called super() by passing it an arg, because the message is actually the only parameter that the built-in Error class accepts.
+So when we call super() , we need to pass in the args of construcotr() of parent class to super() . So there, calling super(message); is basically
+like calling the Error() itself.
+
+In class1 extends class2 , class1 inherits from the class2.
+
+The status can be either 'fail' or 'error' in our app and we COULD pass that into the object, so we could sayL this.status = status; but it's
+also not really necessary. Because the status depends on the statusCode property. For example when the statusCode is 400,
+then the status would be 'fail' and if statusCode is 500, status would be 'error'.
+
+So we can test the first number of statusCode for the value of status. In JS, we have startsWith() method that we can call
+on strings. But the statusCode might be a number(maybe when we call this class in our code, we pass it statusCode in number),
+so we must consider this situation and convert statusCode to string whether we pass statusCode in staring or number.Because the
+startsWith() method is only for strings. For convert statusCode to string, we use it in template string.
+We wrote status property by using a ternary operator BASED ON THE VALUE OF statusCode, so with this we won't need to pass in
+status as a separate argument to this class. So we can find out the value of status based on statusCode and therefore we
+don't need to pass in another arg to this class when we want to create an object from this class by calculating status value
+based on passed in statusCode(so this saves us from manually have to pass in to appError() class another argument which would be
+either 'fail' or 'error', because we calculate it ourselves inside the class itself).
+
+All the errors that we will create using this class, will all be operational errors (errors that we can predict will happen at
+some point at the future, like a user creating a tour without the required fields).
+So again: From now on, instead of using built-in Error class, we use appError class, in order to create the errors
+in our app. These errors will be operational errors(so we need an indicator for this set to true for all of them, because all of them created
+from this class will be operationl errors), so let's create a isOperational prop and set it to true. So all of error objects that created
+from this class will have this prop and it's set to true.
+We create this property, so later, we can TEST for this property in the err objects and ONLY send error
+messages which are operational errors and which means they were created from this class and this is useful, back to the client and this process is
+useful because some other crazy and unexpected errors that might happen in our app, for example a programming error or some bug
+in one of the packages that we require into our app and these errors will of course not have isOperational prop.Because they didn't
+created by our custom error class. So isOperational property shows that the err object is a custom err object and didn't produced
+by the system.
+
+Now we need to capture the stack trace. Actually each err object has the `stack` property on it, so err.stack basically
+shows us where the error and also where it happened and it also shows us the entire call stack which in the end, originated by the error(by that
+new Error()).
+So we kind of want to preserve that call stack and also at the same time, not add this custom class(appError) to that stack track.
+So we say: Error.captureStackTrace() and in parentheses of the prior code, we specify the CURRENT OBJECT WHICH IS `this` keyword in this case and
+also AppError CLASS ITSELF, WHICH IS this.constructor . So with these code, when a new object is created from this class and therefore
+when the constructor function is called, then that function call is not gonna appear in the stack trace and won't pollute the
+stack trace.
+
+Why we didn't say: this.message = message; ?
+Because by calling the parent class(Error class) constructor by saying super(message)
+and whatever we pass into the Error class, is gonna be the message property. So basically by doing super(message) ,
+we already set the message property to our incoming message. So the Error class has the message property and we are extending
+that class so we have that message property too! without defining it in our class definition and by calling super(message) ,
+we are setting the value of incoming message to the message property.
+
+Now comment out the const error = new Error('')...
+in that app.all() middleware, because we want to use the new AppError() class.
+
+Now we are going to create the appError object from AppError class, right in the parentheses of next()
+
+Now we want to export that global error handler in that app.use() middleware. Because in future we're gonna build a couple of different functions
+for handling different types of errors. So we want all of those functions to all of them be in a same file and we can say
+that all of these functions are handlers or we also call them controllers in the context of mvc. So let's create an errorController
+file.
+You could say: Hey we create controllers just for our resources and not anything else! But, at the end of the day, the functions
+that would be in errorController file, they are kinda for CONTROLLING our errors.
+
+In that errorController.js file, we just gonna export that global error handler function. Because other functions
+would be like helper functions and we won't export them, so we used module.exports for that global error handler function.
+
+So now let's comment out those codes because we exported it and it's in another file.
+
+Now import that global error handler in app.js as globalErrorHandler name.*/
+/* 117-7. Catching Errors in Async Functions:
+A better way of catching errors in all our async functions:
+Right now, in all of our async functions, we have try {}catch() {} blocks. Because that is how we usually catch errors inside of an
+async function by using a try catch block. But that makes our code messy. So for example, the goal of a function like createTour is
+to just execute a code that creates a tour and then send the response, not mess around with error handling. But we are using try catch blocks which are
+for error handling and this is not good, our code is not focused. Also we have a lot of duplicate code because in each of our handlers, we have quite a
+similar catch block. So in all of those blocks, all we're doing is to send an error or fail response and that response would actually
+not even be sent here and it but, be sent from our global error handling middleware(but this is another topic). So we need 2 things to fix.
+But first let's fix those try catch blocks in our async functions because they aren't ideal. The solution is to take out try catch
+block, out of the async functions and put them on a higher level in another function. So basically what we're gonna do is to
+create a function and then wrap the async functions which are using try catch blocks into that newly created function and that function
+is catchAsync .We called it like this, because the goal of this function is to simply catch our async errors and inside this function
+we will pass in a function.
+After creating catchAsync function, we will wrap all of the definitions of the functions that we want to pass in to this catchAsync
+function. Because well, as I said we must pass in a function to catchAsync function.
+
+Question: When we're calling fn() in the catchAsync() function, how we call the incoming function (fn) by passing it req, res and next?
+Why we actually have access to req, res and next inside catchAsync() ? Right now, we haven't req,res and next inside catchAsync() function
+But we will fix that.
+
+Important: Right now if any of your middlewares in tourController or userController doesn't have the next parameter. Pass it to them.
+ Because we need to call next(), in order to pass the error into () of next() and therefore the error could go to our global error handler middleware
+ by calling that next(error) with error inside it's parentheses.
+ So all of those functions are gonna need req, res and next as their args.
+
+Now, as you can see we're passing an async function to catchAsync() function and we're calling that async function inside of catchAsync(), fn .
+So the fn function in catchAsync() is an async function and rememeber that async functions return promises and when there is an error inside
+of an ansync function, that basically means that the promise gets rejected and so in catchAsync() function where we actually call that function by
+saying fn(), we can then catch that error by attaching catch() to it. So we catch it there(in catchAsync()) instead of catching it in the try catch
+block.
+
+But as you know, when we want to call an async function, we must await for it. Right? We can't just simply call the async function like
+asyncFunction() . We must use .then() and await for it.
+
+After using .catch() on calling the incoming function, we can remove try catch blocks and just hold the code that is inside
+try block. Because again, the code that is inside catch blocks, transferred to fn(...).catch(...) in the catchAsync() function.
+In catchAsync() function, it's easier to use .catch() on returned promise of fn(...) than using catch(err) {...} block.
+In other words, we transformed catch block into a .catch() method on returned promise.
+
+Now there are actually two big problems and it wouldn't really work at all:
+First is that fn(req, res, next) has no way of knowing req and res and next. So right now
+the incoming function or fn don't know what is req, res and next. Because we did not pass them into catchAsync function therefore
+there's really no way for fn function to know these variables and their values.
+
+The second problem is when we are calling catchAsync using parentheses, inside of catchAsync function definition itself, we are RIGHT AWAY calling
+that incoming function which is named fn and that's not how it is supposed to work. So createTour() function should be really a function but not
+the result of calling another function. (As you can see the createTour function is result of calling catchAsync(createTour function definition)
+) . So the createTour() function shouldn't be called and instead it should sit and wait until express calls it and we know that
+express will call this function as soon as someone hit the route that needs this createTour function to be executed.
+
+Again in other words, we are calling createTour() function manually by calling it by another function which is catchAsync() and pass
+createTour function into catchAsync() which this catchAsync() function would call createTour() (basically catchAsync function would
+call any function that we pass that function to it and in this case that function we pass to catchAsync is createTour and therefore
+createTour would be called manually by us and that's not good because we want to express itself called createTour function not us!)
+and this isn't good.
+The solution is to make catchAsync() function return another function which would be assigned to createTour and that returned function from
+catchAsync, can then later be called WHEN IT'S NECESSARY BY EXPRESS. In other words that returned function from catchAsync
+is gonna be the function that express would call when necessary. So in catchAsync let's say:
+return (req, res, next) => {
+TODO ???????? I don't understand
+}
+So this anonymous returned function is the function that express is then gonna call, so we can specify req, res and next, so that express itself
+can then bring the values of these 3 args, when a route hits the related controller.
+
+Learn: we can simplify err=> next(err) with next. So it would be :
+ return (req, res, next) => {
+ fn(req, res, next)
+        .catch(next);
  }
+So now the next function that we passed to catch() , will be called automatically with the parameter that that callback(that we had before) receives.
 
-On Strings we have other validator like match validator which checks if the input matches the given regex.
+Recap: In order to get rid of try catch blocks in controller functions, we wrapped createTour async function inside of catchAsync() function
+that we just created.The catchAsync() function will then return a new anonymous function and this anonymous function will be
+assigned to createTour function and this new anonymous function will then called as soon as the new tour should be created
+using the createTour handler function and that's why this new anonymous function has the exact signature as createTour function.
+Why is assigned to createTour() ? Because we called catchAsync() and catchAsync() returns an anonymous function that receives req and res and next
+which would be provided by express and it has a catch() block assigned to it.
 
-These were some built-in validators.
+Signature means: (req, res, next) . Now what this new anonymous function will then do is that it will call the function that
+we passed to catchAsync() (in our case that function we passed was createTour) and then it will execute all the code of that
+passed in function and since the passed in function is an async function, it will return a promise and therefore in case there's an error
+in that returned promise, or in other words, in case that promise gets rejected, we can then catch that error using the catch method which is
+available on all promises and in the end, that is the catch() method which will pass the error of createTour function into the next
+function, which will then make it so that our error will end up in our global error handling middleware.
+So this line of code is where all the magic happens:
+EX) fn(req, res, next).catch(next);
+and this is in fact, what allows us to get rid of the catch block that we had previously.
+In this catch() , the error will be propagated, so it will be catched by our global error handling middleware which then sends the error response
+back to client.
 
-110-28. Data Validation Custom Validators:
-A validator is just a simple function which should return either true or false and if it returns false, it means there's an error and
-if we return true, then the validation is correct and then input can be accepted.
+The reason of creating the catchAsync function is to catch all of the errors of our handler functions in one place and not catch
+the error of each function in itself and therefore have bunch of catch blocks which all of them are doing kind of same work which is
+to get the operational errors of that handler. So we transfer all of these catch snippets into one function which is called catchAsync.
+Now why we must pass in the entire function to catchAsync function? Because we want to simply call it inside the returned anonymous function obviously!
 
-We want to validate if the priceDiscount is lower than the price itself.
-For creating your own validator, first make sure you are in the object for the value of that field. So if that field was sth like
-this: field:<type> , change it to
- field: {
-  type: <type>,
-  validate:
-  {
-    validator: <the normal callback function(not arrow function)>,
-    message: <the error message>
-  }
+Now we need to wrap all handlers inside catchAsync() and then get rid of try catch blocks. Then add next arg to all of the handlers because we need it
+in catchAsync() in case there was an error that needs to be propagated to global error handler middleware.
+
+So now if we create a new tour and then some errors happen, then that error should catched in the catch method inside of catchAsync()
+function and the error will sent to our global error handling middleware and that middleware will send back the response.
+
+Now if we try to create a new tour with some errors, for example don't send all of the required fields for creating a tour,
+we will get back a 500 internal server error for statusCode because the error that just sent to the error handler middleware, didn't
+have any statusCode property. So we must fix that.
+Now let's export the catchAsync function into it's own file.
+
+Currently if there is an error in a controller, there is no statusCode property on error object, because those errors actually come from mongoose
+and so we have no way of adding a status code to those errors, ACTAULLY we COULD do it, but that would just be even more confusing and so we're
+gonna find another way.
+So currently, we would always send back the 500 error status code instead of the suitable error status code.*/
+/* 118-8. Adding 404 Not Found Errors:
+Let's now make some more use of our AppError class by adding a couple of 404 errors in some of our tour handler functions.
+
+Note: We COULD have used the catchAsync() function also in our router.
+
+We could wrap the route handler functions inside catchAsync(), right in the route files instead of wrapping them in controller
+files and that would have the same result. For example:
+router.route('/tour-stats').get(catchAsync(tourController.getTourStats));
+and this would have had the exact same result, but we didn't do it this way, because if we use this approach, we have to
+remember which of these functions that are listed as routers in tourRoutes.js are ASYNC functions.
+Because remember we use catchAsync() function on async functions, right?
+Now in this case, actually all of them are async function and so we wouldn't need to remember that they are whetehr asybnc or not in this case,
+but there will be some examples later where not all the handlers are async functions and so in that case, we would really have to remember
+which of them I have to wrap into catchAsync() and which ones not and so doing it in the controller files, is much easier because simply each
+time we're writing an async function there, then we already know well, I need to wrap it into catchAsync() . So we don't do it in the routes files.
+So if you wrap a function that is not async into catchAsync() , it would make bugs.
+
+Now we want to implement 404 error. Because for example when someone enters a weird ObjectId(not a valid ObjectId at all) like 'ddff' in url for getting a tour,
+of course he would get an error that says: cast to ObjectId failed which means mongoose could not convert that url parameter into a valid id
+for mongodb. But when someone enters a valid ObjectId but that ObjectId doesn't
+exist in our database, the result of our api would be:"tour": null . which is not good.We want it to show a 404 status code instead of 200 and say:
+this tour was not found. So we must add some stuff to getTour handler function. It would be: if(!tour) {...}
+So because we get back a null in result, we can test for falsy tour, so !tour in our code(in JS, null is a falsy value, which means it's a
+value that will convert to false, in an if statement) and we used next(<error>) in that if statement, in order to jump straight into our
+error handling middleware and not run the middle middlewares. We also need to use return with that new AppError() in that if statmeent.
+Because we don't want to execute any further code after creating this error. So because we want to return the function that we're in it, immediately
+and not move on to the next line of that function anymore, otherwise we would try to send two responses!
+As soon as next() receives something, it assumes that is an error and will jump straight into global error handling
+middleware which this middleware will send the response from our API.
+
+In JS, null is a falsey value or in other words a value that will convert to false. So if there is no tour, we want
+to just straight into our global error handler middleware. So we must use next(error) .
+
+Now if we try to create a new tour with some errors, for example don't send all of the required fields for creating a tour,
+we will get back a 500 internal server error for statusCode because the error that just sent to the error handler middleware, didn't
+have any statusCode property. So we must fix that.
+Now let's export the catchAsync function into it's own file.
+
+So we create an error using AppError class and we then pass that error into next() and as soon as next() receives sth, it assumes it is an error
+and it will jump straight into the global error handling middleware which will then send the response for us.
+
+So let's create that if statement which checks for `!tour` and paste it into all the other handlers that query docs based on the id, like updateTour()
+so there is the same, if we're trying to update the tour that doesn't exist, it will then give us the exact same error.
+
+Why we didn't use
+if (!tour) {
+return next(new AppError('No tour found with that ID.', 404));
 }
-OR:
-field: [<validator function>, 'error message']
-So to specify our validator, we use the `validate` property.
-We use the third form, if the validator function is small.
+In getAllTours handler function?
+When there is 0 results found, for example there are no results matching for a filter or because the page was requested that doesn't
+exist, then of course we COULD consider sending a 404 error and saying that the data was not found. But that error is not
+entirely correct in this specific request. Because there was not really an error. I mean the request was correctly received and then
+the database correctly searched for the tours and found 0 results and so these 0 records are exactly what we're gonna send back along
+with 200 HTTP status code. So again we consider there can't be really an error, when a user requests ALL of the tours. Unless of course
+there are some failures in the database or something like that and in those cases mongoose will AUTOMATICALLY throw an error which
+would catched by our catchAsync function which it's responsibility is to catch errors of our functions in one place instead of
+writing catch blocks in each of our functions and then catchAsync function would send that error to our global handling middleware
+by saying next(err) .*/
+/* 119-9. Errors During Development vs Production:
+We need to send different error messages for development and production environments. Currently, we're sending the same response message in
+errorController, basically to everyone, no matter if we're in development or in production. But the idea is that in production we want to
+leak as little information about our errors to the client as possible. So in production, we only want to send like a nice human-friendly
+message so that the user knows what's wrong. But on the other hand, when we're in development, we want to get as much information
+about the error that occurred as possible and we want that information right in the error message which is coming back. Also
+we could log the information to the console, but I think it's way more useful to have that information right in postman in this case.
+For distinguishing between development and production modes for executing some code we say:
+if (process.env.NODE_ENV === 'development') {
+  ...
+} else if (process.env.NODE_ENV === 'development') {
 
-Why a normal function? Because in that function we're gonna using the this keyword which would point to the current DOCUMENT. But
-if you don't use this this keyword, you could use an arrow function instead. So for example in priceDiscount field, we have
-access to the priceDiscount that user sent to us and we can receive this current value by specifying a parameter when declaring
-the callback function.In this case we named it val.
-Important: In our custom validators we always need to return either true or false based on some conditions.
-In our case, we said price (actually this.price, because we want to compare the CURRENT doc, right?) should be always greater than
-priceDiscount, which is currently in val parameter. Why we didn't write it other way? So like this.price < val ?
-In the prior example, it would return false. But it doesn't matter how you write it! We just wanted to write the code that shows
-the correct condition.(The correct condition was price property of current doc must be greater than it's priceDiscount.)
-But it doesn't matter anyway. The validator will run if the user sent priceDiscount in his request.
-In this callback function we have access to the value that was inputted.
+}
 
-Also the message property in the object of validate property which it's value is an object, has access to the current value and
-this works in a weird way because internally it's mongoose not JS. So we can use simply curly braces and then VALUE. So
-VALUE is exact as val in parameter of function. But remember because we aren't inside the callback function, in the value of
-message property, we can't use `${}`. Right? But still we have access to current value.
+So in errorController.js , we check if we are in development mode, we send back some more detailed error response but if
+we are in production, we would send a simpler error or fail response to the client(if we have an error of course!).
+Important: So it's important to send one type of response error to client in development mode and another simpler type of response error or
+ fail error in production mode and we do that in errorController file.
 
-For specifying our own validator, you must use validate key name. Like the above example.
+Now let's create some functions for sending errors in that file. In those functions we need to args to pass to them. One is
+the error itself and the second one is response. Why we need to pass response? Because for SENDING a response to the client we need
+the res object that was provided by express. In other words all of the .status() and .json() methods that we want to send the
+response, is actually available only on res object. So we need it in order to send the response.
 
-Important: Inside the callback function of validator property, the this keyword is only gonna point to the current value of that field
- in document, when we're CREATING A NEW DOCUMENT. So that callback function won't work on update or like that queries. But we can fix
- this but it's complicated. But of course we can write validator functions that don't rely on `this` keyword in their code. In our case(in
- priceDiscount field of Tour model, we only need the this keyword, because we're comparing one value with the value of another field - we're
- comparing price field value with priceDiscount value)
-So we can use this kind of validator with a `this` keyword in there, when we're creating NEW docs.
+In AppError class we mark all of the errors that WE create using AppError class, as operation errors, by giving those custom errors a property called
+isOperational and set it to true. So all the errors that WE CREATE OURSELVES, would be operational errors and in fact, it's only these
+operational errors that we want to send their err messages to the client, at least in production. On the other hand, when we have
+a programming error or some other unknown error that comes from a third party package, we don't want to send any err message about
+those kind of errors to the client in production. So this is why we created isOperational property, in the errorController file.
+Important: When we're in PRODUCTION MODE, in situations we have error in programming or error in packages or ... ,
+ (the errors that are not operational errors), we don't to send messages about the error and we just want to send a very generic
+ error message to the client. So we use if(isOperational) when we want to send error responses in production mode. But for errors
+ that aren't operational in production, for ourselves, we want to know an unexpected error happened, so we just log it to the console.
+ But when we're in development mode, we want to have as much details about the error that just happened as possible in order to get
+ rid of that error. It might be an programming error, so with those details we can get rid of bugs.
 
-Also there are a couple of libraries on npm for data validation that we can plug in there as custom validators that we do not have to
-write ourselves and the most popular is called validator.js that we can use it for custom STRING validators that we don't need to write them ourselves
-and this library is only for strings(for validation and sanitization).
+In else case of isOperatation check in sendErrorProd, we log the error to the console for ourselves, but for client, we don't expose much.
+We have access to these logs in the host platform that we deploy our code. So we can keep looking at those logs and then in there,
+we're gonna find those unexpected errors, so that we can then fix them.
 
-Many of the things that are in this library, are already built-into mongoose and so we don't need all of them.
-
-For example, we want to check if the tour name only contains letters.
-and for that, we can use isAlpha() method which numbers and underline and dash and even whitespaces are also invalid. So we commented out in
-name field in our schema!
-So install this package.
-
-Important: You shouldn't CALL the methods on validator object. So don't use parentheses when using validator in schema options.
- And also we didn't call our custom callback validator functions.
-
-Using Validator.isAlpha() wasn't ideal for name field of Tour model, because we in addition to numbers, we also can't use spaces as the value
-of name field, so we can create our own validator.  */
-
-
-/* Learn: There's 2 ways of specifying the validator function (our own or built-in or 3rd party doesn't matter in this case) and the error msg.
-    One way is to use them in an array(the shorthand)- So like this: [<the validator function>, '<error msg>'] OR the second way is:
-    validate: {
-     validator: <the callback function>,
-     message: <message>
-    }
-*/
-
-/* Mongoose is just a layer of abstraction on top of mongodb, which is why mongoose doesn't use the exact same functions, but
-still it gives us access to similar ones or some exact function names, like deleteMany() which has a same name in native
-mongodb. */
-/* In mongoose there are 2 ways of writing db queries.The first one is to just use the filter object and the
-second one is to use some mongoose special methods. So we chain special mongoose methods to build the query.
-EX for first way:
-const tours = await Tour.find({
-  duration: req.query.duration,
-
-});
-
-EX for second way:
-const tours = await Tour.find().where();
+There are real logging libraries on npm that we could use instead of simple console.error() , but this special log, will make
+the error in console very visible.
 
 
-*/
+Right now there are some errors, that maybe come from mongoose which we didn't mark as operational errors by setting isOperational
+property on them. So they would have a response of: something went wrong! Because they aren't operational. So we didn't create
+those errors by ourselves. BUT WE NEED TO MARK THEM AS OPERATIONAL ERRORS TOO, so by setting them to operational we can send an
+appropriate error message for those kind of errors. Actually there are 2 or 3 other errors that we need to mark.
+
+So we're distingusign between errors in development and in production, so when we're in production, we send the error using sendErrorDev function,
+which will then send as many details as possible to the client, so that we really get all the information in order to get rid of the bug, if it's
+a programming error or if it's an operational error, then we still really want to see anything that's going on.
+
+When we're in production, then we distinguish between operational errors, so errors that we know and trust, and the other errors that might be kind of
+unexpected. If the error is operational, so for example the user trying to access a route that doesn't exist, or trying to input invalid data,
+all of these are operational errors(yeah, even in prod mode) and we can then send appropriate error messages for the client to know what went wonrg.
+But on the other hand, we have unknown errors or unexpected errors and in that case, log that error(so we can see it) and then we simply say sth went wrong.
+
+Now in order for this to work, right now there are errors that are for example coming from mongodb, which we do not mark as isOperational and so in
+that case, they would currently simply be handled using that generic error message that says sth went wrong. For example a validation error.
+Right now that's an error that's coming from mongoose and not from our OWN AppError class, because we don't create these errors by ourselves which means
+with AppError class and so again, they are right now not marked as operational. But of course we NEED to mark them as operational, so that we can
+then send the appropriate error message back to the client, for example "the input data is invalid" error message and there are two or three other
+errors that we need to mark as operational OURSELVES and we will do that in: else if (process.env.NODE_ENV.trim() === 'production') {} block.*/
+/* 120-10. Handling Invalid Database IDs:
+There are 3 types of errors that might be created by mongoose and we need to mark them as operational errors. So by mark them as
+operational errors, we can then send back meaningful error messages instead of generic error message, to clients in PRODUCTION,
+in dev, we always send back meaningful error messages. Because when we're in production mode, if the error haven't isOperational property,
+we would send a generic error message for it.
+Now let's simulate those 3 errors.
+
+First one is when we try an invalid id query param in getTour . Because this error is very common, so we
+need to mark it as an operational error and send back a meaningful response instead of mongoose default response. So the goal is to
+mark this error as an operational error and create a meaningful message, instead of sth like: "Cast to ObjectId ...", which doesn't mean
+anything to the client and also has security risk. So we need to mark it as opertional and create a menaningful message. It's name property is
+"CastError".
+
+The second common error in mongoose, is when the user is trying to create a tour and he send a duplicate name value for the tour he wants to create.
+So this error is very common and right now it hasn't a very meaningful error message. So we want to customize this error.
+
+The third common error is also kind of related to validation, is when user wants to update a tour and he wants to update a tour
+with ratingsAverage of 6! But the maximum ratingsAverage is 5 and it's name property is "ValidationError" We mark these errors as operational IN PRODUCTION.
+Because in development it doesn't matter the error is an unexpected error or an error that is common and we customized it.
+Because we want to get as much information about the error as possible.
+
+Learn: For returning a meaningful error message for mongoose common errors, we can check the error.name property to figure out what is the
+ kind of error and if it was a common mongoose error, we behave it like an operational error.
+
+We're gonna pass the error that mongoose created, into handleCastErrorDB() function and this function will then return a new error which is
+created with our AppError class and therefore that error would be marked as isOperational, because remember, all our AppError objects have the
+isOperational property set to true automatically.
+
+For converting a mongoose default error to our customized errors we call handleCastErrorDB() function to convert that kind of error
+to our special errors that are created with AppError class and those errors would be marked as operational. Because remember, all of our
+errors that created by AppError class, have isOperational property set to true. So handleCastErrorDB() would return that special error
+so let's save the result of it to a variable(err).
+Important: It's not a good practice to override the arguments of a function. In this case we are overriding the err argument.
+ So instead of overriding err object, we can create a hard copy of that err object and we will use let and not const because we will
+ reassign a new err later. For creating a hard copy of an object(in this case that object we want to create a hard copy from it is
+ err object), first we must destructure that object we want to create a hard copy from it.
+After destructuring err object, we use error object in furthur code.
+
+Learn: In express, normal names of errors are err.
+
+I called the arg of handleCastErrorDB function err instead of error, because it's kind of standard in express to name errors as err. Although
+we're sending a hard copy of err object which is named error to this function, we named the argument of this function err instead
+of error, because it's a standard in express to name errors, err.
+
+The goal of that function is to convert a weird mongoose CastError to our customized and understandable error by using the
+AppError class.
+
+Learn: The errors that are coming from mongoose, (they aren't customized currently!) have a property called path, which is the
+ name of the field for which the inputted data is in the wrong format. In other words, path field shows the field that had a wrong value in
+ inputted data and that WRONG value for that field which has the wrong value is in `value` property.
+ For example if the user requests a tour with wwww _id, the path property in err object would be _id and the value property in
+ err object would be wwww.
+
+Now let's handle the error that occurs when we try to create duplicate fields for fields that are supposed to have unique values.
+
+By creating that function, we transform the wierd error that we were getting from mongoose , into an operational error with a nice friendly message
+that human can read.
+
+IMPORTANT: If you see that process.env.NODE_ENV is not equal to development or a string, it's probably it has some spaces.
+ So look at your package.json (where you SET the NODE_ENV environment variable) , you must use:
+ SET NODE_ENV=production&& nodemon server.js instead of "SET NODE_ENV=production && nodemon server.js"
+ Because if you use the second one, the value of process.env.NODE_ENV becomes production + " " instead of production and the
+ comparison of if (process.env.NODE_ENV === 'production') always returns false. But if you use the first one npm script,
+ that comparison returns true. Also it's a good practice to use process.env.NODE_ENV.trim() when you want to do comparisons between
+ process.env.NODE_ENV and production or development or ...
+ You can trim() the value of process.env.NODE_ENV too, when you wanna compare it to a static value.
+
+Now we need to handle duplicate field names error case.*/
+/* 121-11. Handling Duplicate Database Fields:
+Now let's handle the error that occurs when we try to create duplicate fields for fields that they are supposed to be unique.
+For example we try to create a tour with a name which that name exists. Currently the error that comes from this situation
+doesn't have the name property and that's because it's actually not an ERROR that is caused by mongoose and it's caused by
+underlying mongodb driver and what's we're gonna do to identify this error is to check the code property which would be 11000
+in case of duplicated field value which must be unique(because in this case we don't have the name property to check for it in order to handle it and
+send a nice readable error).
+
+We have one handler for CastError, let's now create a function for the case that we want to check the error.code property and that function is named
+handleDuplicateFieldsDB() . Also I added DB in the end of name of the function to know that this function is taking care of
+stuff about database(in this case duplicated field value which must be unique).
+
+For getting the field that was duplicated and it's value we must use a regular express to extract the value of that
+duplicated field which the user sent to us(that value would be between quotes and in errmsg property that mongodb driver is actually sending to us
+and then we send to client), from the errmsg property of the error. The non operational error message property that is
+coming from mongoose is something like:
+"message": "E11000 duplicate key error collection: natours.tours index: name_1 dup key: { name: \"<THE VALUE OF DUPLICATED FIELD\" }",
+For finding the duplicated field and it's value, the instructor uses(we can search for: regular expression match text between quotes):
+const value = err.message.match(/(["'])(\\?.)*?\1/);
+Now we want the first element of the result of the match() method. So :
+const value = err.message.match(/(["'])(\\?.)*?\1/)[0];
+Important: But in my error object there isn't any message or errmsg property. Instead I have keyValue property which has an object of
+ duplicated field-value in request.
+
+Remember to run the npm script in production, so that you can see the error that the client would actually see in postman(in dev, we would ge
+all of error which shouldn't shown in production.)
+
+Now in next vid, we need to handle the last of the three type of errors which are the validation errors.
+
+122-12. Handling Mongoose Validation Errors:
+Now let's handle mongoose's validation errors and make them customized.
+For example you want to update a tour with a difficulty of insane(invalid data) and the validator doesn't let this.
+So enum is a validator. Or another error in this type could be to send a field that it's value is very short.
+We need to mark these type of errors as operational like the other two that we did.
+
+When some validators throw errors, in response we would have a property named `error` and in that error we have an object called
+errors and in that errors object, for every field that it's validator threw an error, we have the name of that field and the
+values for the name of each field that it's validator threw an error are some properties which we interested in properties property,
+which it's value is an object that have message property and path property which is the name of the field and ... .
+We want to create a meaningful error in prod, based on all of the things that I mentioned.
+
+Message property is the message that we defined in the mongoose schema. Remember: We find out all of these objects in development
+mode and you can't see any of these objects in production mode, because in production mode we want to send that concatenated string
+which has all of those messages put together.
+
+The CastError and ValidationError error types are coming from mongoose and therefore they look like each other but the error.code === 11000 is coming
+from underlying mongodb driver and therefore it's if () {} statement is a little bit different than the other two.
+
+Our goal is to extract the message properties from properties object which is in an object that it's name is the name of
+each field and all of them are in errors object and put all of those messages in one string.
+Solution: We need to loop over all of the objects and then extract all of the error messages into a new array.
+Learn: In js, we use Object.values() in order to loop over the elements of an object.
+
+In our code, errors variable would be an array of all of the error messages.
+When we say: Object.values(err.errors) it would return an array of objects that each object's name is the field name which have validator errors.
+If in the requested fields there were errors in difficulty field and name field, the result of Object.values(err.errors) ,
+would be an array of difficulty object and name object.
+
+We use join('. ') to separate the error messages with a dot and a space between each of them. So it would be:
+<error message1>. <error message2>. <error message3>
+
+Learn: The ValidationError s are created by mongoose. Just like the CastErrors, so they look similar.
+
+We could define different error severity levels like saying: This error is not so important.
+This error is medium important and this error is very important or even critical and we could also then email some administrator
+about critical errors and ... .
+
+So:
+Now if you would ever to find another error that you want to mark it as operational error, you just need to use an if statement to catch those
+types of errors and in that if statement, you need to call a special function which make those kind of errors operational by
+returning a new instance of AppError() class and also create a message for those kind of errors and pass it to new AppError() and
+a status code must also pass in to return new AppError() and then sendErrorProd() will send that error to the client.
+
+Still it would be some errors that we need to handle, which are completely outside of mongo or even of express and we need to prepare for them.*/
+/* 123-13. Errors Outside Express Unhandled Rejections:
+In nodejs we have sth called unhandelded rejections and let's look at how we can handle them.
+
+At this point, we successfully handle errors in our express application by passing operational async errors down into a global
+error handling middleware. That middleware then sends relevant error messages back to the client depending on type of
+error that occurd. However, there might also occur errors outside of express and a good example for that kind of errors in our
+current application is the mongodb database connection. So imagine the database is down for some reason or for some reason we can't
+log in and in theses cases there are errors that we need to handle as well. But they didn't occur INSIDE of the express application
+so the global error handler that we implemented won't catch these errors. For test, let's change our mongodb password in .env
+file(DATABASE_PASSWORD env var). Because that way, we're not gonna able to connect to db. Now save it and you would get an error,
+in server.js file and you would get: unhandled promise rejection.
+
+An unhandled promise rejection, means that somewhere in our code, there is a promise that get rejected.But that rejection has not
+been handled anywhere. Also in error, you would see a deprecation warning. Which says in the future, unhandled rejections will
+simply exit the node program that's running, which may not always what you want.
+Now all we have to do in this case, is when we are using mongoose.connect() and after using .then() on it, use .catch() . Now with that .catch()
+you would no longer get unhandled promise rejection when you couldn't connect to database. Because you handled in that .catch() . But I commented it out.
+
+Now how we can GLOBALLY handle the unhandled promise rejection errors (because in bigger apps, it can become a bit more difficult
+to always keep track of all the promises that might become rejected at some point)?
+So let's delete that .catch() in mongoose.connect() method and we're gonna do it globally. We're gonna handle them globally in server.js
+and we're gonna use event listeners. So each time that there is an unhandled error rejection somewhere in our app, the process object
+will emit an object called unhandledRejection and so we can subscribe to that event by using process.on('<name of the event>', (err) => {}) .
+
+Remember: err.name and err.message are kind of default properties that we have on err objects in node.
+
+Now we get: "MongoError bad auth Authentication failed" for err.name and err.message values.
+
+With this event listener, we're not just handle failed db connection but also any other promise rejection that we might not
+catch somewhere in the application is handled here in that event listener(let's call it final safety net). So with this event
+listener we don't get any unhandled promsie rejection error in console. So we always have to assume that we as programmers
+are gonna make errors.
+So it's good to have a central place like this to handle all promise rejections like a last safety net. Now if we really have a problem with
+database connection like wrong password or ... , then our app is not going to work at all. So in here we can shut down our application. To shut down
+the application, we use process.exit() . In () of exit() we can pass in a code and the code 0 stands for success and 1 stands for uncaught exception.
+By using process.exit(1); we would see: arr crashed - waiting for file changes before starting...
+After using this, if an unhandled error occurses, the app actually crashes and that's because of that process.exit() in that listener.
+
+Now there's one problem with the way that we implemented things like this. The problem is that process.exit(1); is very abrupt way of
+ending program. Because this will just immediately abort all the requests that are currently STILL running or pending and so this is
+not good and so we usually what we do is to shutdown gracefully, where we first close the server and only then we shutdown the application.
+
+Learn: For shutting down server and app gracefully, first you need to save the server or result of
+ app.listen(port, () => {
+ console.log(`App running on port ${port} ...`);
+ });
+ into a variable. In our code, that variable is called server.
+ Basically the result of app.listen(port, callback) is a server.
+ Then we use server.close(() => {}) in process.on('unhandledRejection'm ()=> {})
+ After the server is closed, it would run that callback function which is inside it's parentheses and it's only in that callback that
+ we SHUTDOWN the server.
+
+server.close() will close the server and then after that's done(after we closed the server), it will run the callback function that we passed
+into it as an arg.
+
+So by doing server.close() we are giving the server some time to finish all the requests that are still pending or being handled
+at the time and only after finishing them, the server is basically killed.
+
+Also it's not ideal that the application crashed. Because at that point the app is not working at all and therefore
+crashed is not very meaningful.So usually in a production app on a web server, we will usually have some tool in the place that
+restarts the app right after it crashes. Or also some of the platforms that host node.js apps will automatically do that on their own.
+Because of course we don't want to leave application hanging like that(app crashed - ...) , so handging around forever, that's useful either.
+So process.on('unhandledRejection', (err) => {})  is for errors that occur in async codes which were not handled.
+
+Now what about sync codes?
+
+124-14. Catching Uncaught Exceptions:
+Now we must catch `uncaught exceptions`. But what are they? Well, all errors or let's also call them bugs, that occur in sync code but are
+not handled anywhere are called uncaught exceptions. For handling them we listen to uncaughtException event and like before,
+so just like with the `unhandled rejections`, we also have a way of handling uncaught exceptions.
+
+For example console.log(x) which x is not defined, also we get the entire stack trace printed to the console.
+
+So we need to listen to an event called 'uncaughtException'. We want to log the error to console, so that it hen shows up in the logs in our
+server and gives us a way of then fixing the problem.
+
+We could refactor the codes in those two event listeners into a function.
+
+console.log(err), prints the entire stack trace to the console, but using err.name and err.message won't do that.
+
+While in unhandledRejection, make the app to crash is optional by using process.exit(1) , but when there is an uncaughtException we really need to
+crash our app. Because after there was an uncaught exception, the entire node process is in a unclean state and to fix that,
+the process need to terminated and then restarted and again in production we should have a tool in place which will restart the
+application after crashing and many hosting services already do that out of the box.
+In node.js this isn't a good practice to just blindly rely on these 2 error handlers. So ideally errors should really be handled
+right where they occur. For example in connecting to database error, we should add a catch handler to mongoose.connect() and not
+just simply rely on the unhandledRejection callback and some people even say that we shouldn't use those unhandledRejection and uncaughtException listeners
+at all! But they're good actually as a safety net.
+
+Important: 'uncaughtException' event listener must be at very top of our code, or at least before any other code is really
+ executed. Because if we would have an error before this handler, it won't catch that error. So it means the syncronous error happened before
+ we register the uncaughtException error listener(in other words, that's because we only at the end(where we placed that listener) we actually
+ start listening for an uncaughtException, but an uncaughtException error might happen before we even start to listen to that even which is
+ uncaughtException and therefore we have no way of catching it).
+ Also the 'uncaughtException' handler must be in the entry file which is defined in package.json file. Because that's the file
+ that our application starts to running.
+
+Now if you put that 'uncaughtException' handler a the very top, for example before requiring dotenv package,  the server is not defined
+at that point. But that's not a problem, because actually we don't need server the server there and that's because those
+'uncaughtException' errors, won't happen asyncronously. So they're not gonna have anything to do with the server actually. So I comment
+some parts of it.
+Now we have that 'uncaughtException' error handler for sync codes, before we actually require our main application. So because
+it is before the requiring of main application, it can catch all of the 'uncaughtException' errors in our APP. So if we would
+have an 'uncaughtException' error in one of our middlewares, if that middleware doesn't execute(for example because there isn't any request),
+that 'uncaughtException' error wouldn't be catched by 'uncaughtException' error handler. For example if we have console.log(x)
+in one of the middlewares that runs when we have an error, that 'uncaughtException' error won't catched by 'uncaughtException' error handler.
+Why is that? Because a middleware would execute if we have a request.
+
+Learn: At this point if you have something like console.log(x) in one of your middlewares that run for the request, in production
+ mode we would get 'something went wrong!' message in the response. Because that console.log(x) is non operational error(an error
+ that we didn't create ourselves). So it would enter the errorController and in sendErrorProd()'s else branch and so that's what happens when
+ there is an error insdie of any express middleware. So when there is an error in express, express will automatically go to the error-handling
+ middleware with that error and so that's why when we get an error in any of our middleware function, it will immediately go into that
+ module.exports(req, res, next, err) which is the global express error middlewara and it will then call sendErrorProd() and since it's not
+ CastError or it's code is 11000 or a ValidationError, it would go to else block of sendErrorProd() (we assumed the error was logging an undefined
+ variable to console in one of the middlewares that was handling the request).
+ Also if the non operational error happen outside of middlewares in production mode, the 'uncaughtException' error handler would catch it.
+ So when there is an error in express or any middleware, it would go automatically to global error handling middleware which is
+ in errorController file. Also if we were in development mode and have non operational error, the response would be the detailed
+ error. Why? Because again we have an error in one of our middlewares which is a part of express application and express will
+ automatically send that error to global error handling middleware and ... .
+ But if we are in development mode and there is a non operational error outside of middlewares, that error would catched by the
+ 'uncaughtException' error handler. */
