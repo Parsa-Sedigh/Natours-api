@@ -877,6 +877,8 @@ So you can send requests for protected routes immediately! without doing any oth
 You can see the automatically jwt that was placed by postman, if you click to see the hidden headers of request in Headers tab of each req that needs to have
 a token.
 
+For testing as an admin, first login as an admin and then send a request to delete tour.
+
 Learn: 204 status code is for when we delete a record.
 
 An administrator or a lead-guide has a permission to effectively delete tours.
@@ -889,8 +891,7 @@ Important: The id that is encoded into the jwt, is what makes our code then know
 
 This was another piece of the puzzle in implementing our authentication workflow.
 
-We want to restrict a lot of other routes, like updating a tour route.
-*/
+We want to restrict a lot of other routes, like updating a tour route.*/
 /* 136-12. Password Reset Functionality Reset Token:
  */
 
