@@ -12,8 +12,8 @@ requiring these routers, we can import them as their unique names in app.js file
 instead of their unique name, like userRouter or .... */
 const router = express.Router();
 
-router
-  .post('/signup', authController.signup);
+router.post('/signup', authController.signup);
+router.post('/login', authController.login);
 
 router
   .route('/')

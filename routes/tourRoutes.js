@@ -2,6 +2,7 @@
 
 const express = require('express');
 const tourController = require('../controllers/tourController');
+const authController = require('../controllers/authController');
 
 /* It's better to call the separate routers (routers that have separate files), just routers instead of tourRouter or ... and then
 export and then import these separate routers into our main file. (When we have only one thing to export, we use module.exports = <the thing>) */
@@ -17,7 +18,7 @@ router.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
 
 router
   .route('/')
-  .get(tourController.getAllTours)
+  .get(authController.protect, tourController.getAllTours)
   // .post(tourController.checkBody, tourController.createTour);
   .post(tourController.createTour);
 
@@ -25,6 +26,6 @@ router
   .route('/:id')
   .get(tourController.getTour)
   .patch(tourController.updateTour)
-  .delete(tourController.deleteTour);
+  .delete(authController.protect,authController.restrictTo('admin', 'lead-guide'), tourController.deleteTour);
 
 module.exports = router;

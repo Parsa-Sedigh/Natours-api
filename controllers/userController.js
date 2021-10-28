@@ -1,10 +1,25 @@
-exports.getAllUsers = (req, res) => {
-    /* Status code 500 means internal server error and when we have this code, the status is 'error'. */
-    res.status(500).json({
-        status: 'error',
-        message: 'This route is not yet defined.'
+const User = require('../models/userModel');
+const catchAsync = require('../utils/catchAsync');
+
+exports.getAllUsers = catchAsync(async (req, res, next) => {
+    const users = await User.find();
+
+    res.status(200).json({
+        status: 'success',
+        requestedAt: req.requestTime,
+        results: users.length,
+        data: {
+            users,
+        },
     });
-};
+
+    /* Status code 500 means internal server error and when we have this code, the status is 'error'. */
+    // res.status(500).json({
+    //     status: 'error',
+    //     message: 'This route is not yet defined.'
+    // });
+});
+
 exports.createUser = (req, res) => {
     res.status(500).json({
         status: 'error',
