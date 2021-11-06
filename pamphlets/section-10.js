@@ -893,9 +893,337 @@ This was another piece of the puzzle in implementing our authentication workflow
 
 We want to restrict a lot of other routes, like updating a tour route.*/
 /* 136-12. Password Reset Functionality Reset Token:
+We're gonna implement a user-friendly password reset functinality, which is kind of standard in most web applications.
+
+The password reset ussually works like this:
+You just have to provide your email address and you will then get an email with a link where you can click and then that's gonna take you to a page where
+you can put in a new password.
+So basically thrre are two steps:
+1) the user sends a post request to a forgot password route, only with this(his?) email address and this will then create a reset token and sent that
+to the email address that was provided. So just a simple random token, not a JSON web token. That's a difference here.
+2) In the second part, which is gonna be the next video, the user then sends that token from his email, along with a new password, in order to
+update his password.
+
+So create forgotPassword function in authController, which is the first step and as the second step, we have resetPassword function.
+Now implement these two routes in the userRoutes file.
+The /forgotPassword route we will receive only the email address and the /reset-password will receive the token as well as the new password.
+
+The steps for forgotPassword is:
+1) Get the user based on the POSTed email
+2) Generate the random reset token
+3) Send it back as an email to user's email
+
+We use findOne() and not findById() in first step for finding the user, because we don't know the user's _id in request(user only sends
+his email and not _id) and also user of course, also doesn't know his own _id! So we specify the email address for finding the user, because that's
+what the user would send to us. It's the only piece of data that is known.
+
+After finding the user, we need to verify if the user does exist. So:
+if (!user) {
+  // go to the next middleware, along with the new error.
+  return next(new AppError(...));
+}
+
+In second step, for generating the random token, once more, we're gonna create an instance method on the User. Because once more, this really has to do
+with the user data itself and we're gonna write a bit of code really and so if it was only one line of code, then of course, we could just put it right
+in the controller and route handler itself. But we need a couple of lines of code and so again, it's a bit cleaner to separate it into it's own function
+and that usually with mongoose, is best, as an instance method.
+
+The password reset token should be a random string, but at the same time, it doesn't need to be as cryptographically strong as the password hash that we
+created before. So we can just use the very simple, random bytes function from the built-in crypto module.
+
+To randomBytes() we need to specify the number of characters and then we also in the end, convert it to a hexadecimal string, so call .toString('hex') .
+
+Now if you're wondering why we're creating that token, it's because basically that token is what we're gonna send to the user. So it's like a reset password
+really, that the user can then use to create a new real password, and of course, only the user will have access to this token and so in fact, it really
+behaves kind of like a password and so since essentially it is just a password, it means that if a hacker can get access to our database,
+well, then that's gonna allow the hacker to gain access to the account, by setting a new password.
+So again, if we would just simply store this reset token in our database now, then, if some attacker gains access to the DB, they could then use
+that token and create a new password using that token, instead of YOU doing it. So they would then effectively control your account, instead of YOU doing it!
+So just like a password, we should NEVER store a PLAIN reset token in the database. So let's encrypt it, BUT such as before with the password,
+it doesn't need such a cryptographically strong encryption method. Because these reset tokens are a way less dangrous attack vector and so again, we're
+just gonna use the built-in crypto module and it works in kind of weird-looking way, by using sha256 algorithm
+crypto.createHash('sha256').update(<the string to encrypt>).digest()
+
+we pass the variable where the token is stored, to update() . So whatever string we want to encrypt, we pass to update() and then call digest() and then
+store it as a hexadecimal by passing 'hex' to digest() .
+Now, where are we gonna save that reset token?
+We're gonna create a new field in our database schema. Because of course, we want to save it in the database, so that we can then compare it
+with the token that the user provides. So create a field named: passwordResetToken and then also passwordResetExpires field, because this reset will
+actually expire after a certain amount of time, again, as a security measure. So you will only have 10 minutes in order to actually reset your password.
+
+We want to return the plain text token from createPasswordResetToken instance method, because that's actually the one that we're gonna send through
+the email, so:
+return resetToken;
+So of course we need to send via email, the unencrypted reset token, because otherwise, it wouldn't make much sense to encrypt it at all. So if the
+that was in the database, was the exact same that we could use to actually change the password, well, then that wouldn't be any encryption at all and
+so we send one token via email and then we have the encrypted version in our database and that encryped one is then basically useless to change the password.
+So it's just like when we're saving only the encrypted password itself to the database(so just like what we did in pre save hook in userModel). so where we
+encrypted the password using bcrypt. So again, keep in mind that we only ever save sensitive data in an encrypted form and then of course, compare it with the
+encrypted version that's in the database.
+We're logging in the createPasswordResetToken, with the object format, because this way, it will then tell us the variable name along with it's value.
+
+Currently, what we did in createPasswordResetToken, was just to modify the data in there, for example when we set this.passwordResetExpires = Date.now()...;
+we did in fact not really update the document, we did not save it. So we really just modify it, but now, we then need to save it. So write:
+await user.save();
+But watch what happens as we now use this.
+So go to postman and create a reqeust for forgotPassword route, you get an error saying: "Please provide email and password."
+
+That happens because we're trying to save a document, but we do not specify all of the mandatory data, so the fields that we marked as required.
+All we need to do, is to pass a special option into save() which is {validateBeforeSave: false} and this will deactivate all the validators
+that we specified in our schema.
+
+Now if you try to send a request to /forgotPassword , we still get the same error! But now I see it's coming from the login function(in before it was
+also coming from there). Because we specified the login as route handler for /forgotPassword!!!!
+So the error that we got before, was actually not because of the validation!
+Now if you send the request to /forgotPassword, if you don't provide email, you will get: There is no user with that email address and so that's because
+of course, we didn't specify any email address in the body.
+
+The console.log() we wrote in createPasswordResetToken, would log the original reset token which would be a random hexadecimal string and then as second one,
+we get the encrypted one and the second one is the one that should now be in the database. So take a look at the related user doc to see if that second
+logged string is now stored in passwordResetToken field. Also look at the passwordResetExpires, it should be 10 minutes from the moment you got the response.
+
+This was the first part of creating the password reset functionality. In the next vid, we will send the resetToken that we stored in resetToken variable,
+via email, to the user.
+So we need to send email with nodejs.*/
+/* 137-13. Sending Emails with Nodemailer:
+We need to send passwordResetToken via email to the user. We're gonna send email with nodemailer.
+
+If we don't put {validateBeforeSave: false} , in user.save() , we get: please confirm your password and ... and if you resolve this in your data
+that you send, you will get other errors again. Because we don't have any value on the passwordConfirmField and that's because of the validation,
+so we can easily turn it off with that option I mentioned.
+
+Now let's create an email handler function that we can then use throughout our application.
+So we're gonna create a file in utilities folder called: email.js .
+Run: npm i nodemailer
+
+The options(arg of sendEmail()) that I specified in email.js is for example the email address where we want to send an email to, the subject line,
+the email content and maybe some other stuff.
+
+Now we need to follow three steps in order to send emails with nodemailer.
+1) First we need to create a transporter.
+2) Then we need to define the email options.
+3) Actually SEND the email with nodemailer.
+
+The transporter, is a service that will actually send the email. Because it's not nodejs that will actually send the email itself. It's just
+a service that we define in there. Something like gmail for example. Now gmail is not actually the service that we're gonna use, but let's see
+how it works with gmail, because many people will be interested in this.
+
+We need to always create a transporter and that's always the same no matter what service we're gonna use.
+There are a couple of well known services that nodemailer knows how to deal with and so we don't have to configure those manually and Gmail is one of
+them. But also there is yahoo or(and?) hotmail.
+Now for the object we pass to auth property of createTransport() , we would write some config, so just like before, we save that kind of stuff in our
+config.env file.
+
+So create: EMAIL_USERNAME for gmail username and EMAIL_PASSWORD.
+
+So that was the configuration for transport in nodemailer.
+Then in your gmail account, you will have to activate something called the less secure app option.
+
+The reason why we're not using gmail in this app, is because gmail is not at all a good idea for a production app and that's what we're building here.
+So using gmail for this kind of stuff, you can only send 500 emails per day and also, you will probably very quickly be marked as a spammer and from there,
+it will only go downhill. So unless it's like a private app and you just send emails to yourself or like 10 friends, well, then you should use another service
+and some well-known ones are sendgrid and mailgun and we will use sendgrid a bit later. Now, what we're gonna do right now, is to use a special
+development service which basically fakes to send emails to real addresses. But in reality, these emails end up trapped in a development inbox, so that
+we can then take a look at how they will look later in production. That service is called mailtrap, so let's signup for that.
+So basically with this service, you can fake to send emails to clients, but these emails will then never reach these clients and instead be trapped in
+your mailtrap and so that way, you cannot accidentally send some development emails to all of your clients or users.
+
+After creating account, you won't have any inboxes, so create a new one with the name of 'natours'. Then look at the credentials in SMTP section and you see the
+host, port, username and password and that's what we're gonna specify in our transport in nodemailer. So copy them from mailtrap site and paste in
+config.env file.
+Don't forget to specify the host for email too, because mailtrap is not one of the predefined services that comes with nodemailer.
+
+In step 2, we need to define some options for our email.
+We COULD do step2 and 3 all at the same time, but I like to simply prefer those options there first.
+In step2, the `to` property is the recipient's address and that would come as an argument to that function.
+The text property of options is basically the text version of the email, but we can also specify the html property in options and we could
+convert that message(I think options.html) to html, we will do this later. But for now, we don't specify html at all. So simply leaving it as text.
+
+Since we don't want to directly work with promises, let's use async/await.
+
+We COULD store the result of: await transporter.sendMail(mailOptions); .
+
+We can export sth as default from a module by using: module.exports = <the default export value>;
+
+Ideally, the user will click on that email and will then be able to do the request from there and that's gonna work later when we implement our dynamic website, but still,
+we now want to create the resetUrl in forgotPassword's second step, so that the user can simply copy it to make it easier to do this request.
+
+When defining resetURL, we need to recreate the url structure that we have, like most of our requests.
+
+The /resetPassword req, will take the token as a parameter and it's a PATCH req. Because the result of it, will be the modification of the password property in the
+user document and so PATCH is the best one.
+
+We're preparing the resetUrl constant to work both in development and in production.
+It's not ideal to define that url hardcoded in forgotPassword like that, but we're gonna fix later.
+
+We're gonna send the PLAIN or ORIGINAL reset token and not the encrypted one, in the url, so in resetUrl. We will then, in the next step, compare the original token
+with the encrypted one.
+
+By defining the message constant in forgotPassword, we're basically giving the user, some instructions.
+
+After sending the email in forgotPassword(), we also need to send a response, otherwise, the request/response cycle will never finish.
+
+Important: Of course, we can not send the reset token right in the response(in res.status.json()) via json(jsend?), because then everyone could
+ just reset anyone's password and take over any account that they wanted and so that's the whole reason why we send it to an email address, because
+ we assume that the email is a safe place that only the user has access to.
+
+There might happen an error using that await sendEmail() and so in that case, we of course want to send an error message to the clinet. But in this case,
+we actually need to do more than simply send an error message. We need to set back the passwordResetToken and the passwordResetExpired that we defined and so
+right now, it's not enough to simply catch the error and then send it down to our global error handling middleawre. But instead, we need to simply add
+a try catch block in await sendEmail() . So again, because we actually want to do MORE than simply send an error down to the client.
+
+Important: So if you want to do more than simply sending the error to the client by global error handling middleware(which happens because of catchAsync()),
+ you can use try catch block(which is what we tried to avoid in the first place, by using catchAsync()), inside that async function, to do more in the
+ catch block.
+
+What we want to do in OUR catch block?
+We want to reset both the token and the expires properties.
+
+By saying:
+user.passwordResetToken = undefined;
+user.passwordResetExpires = undefined;
+it will only modifies the data, but doesn't really save it to db. So we need to use: await user.save(...);
+
+In this case, the error code that we OURSELVES send to the client, can be 500. So this is really an error that happened on the server and so it has to be a 5xx code and
+500 is standard one.
+
+Now if you test the /forgotPassword route, it might take a longer time because of sending the email, for example it might take 5 seconds.
+
+Now if it was successful, meaning the response said: "Token sent to email!", as we know, since we used Mailtrap, it ACTUALLY didnr't send that email to the provided
+email in the body of request, but instead, the email should be now trapped inside of Mailtrap.
+After seeing the token in mailtrap, check the token param with the token that is in the db for that user or the token that was logged because of console.log() that we have
+in createPasswordResetToken() instance method. The stored token in db, should be the encrypted version of the email's token(the token that is in url param in email) and
+the passwordResetExpires should be expired in 10 minutes form the moment that code was executed.
+So the resetToken constant should be sent to the email that user provided and this.passwordResetToken in userModel, should be stored in the database.
+
+In the next vid, we will actually reset the password based on the new password that the user sends with the /resetPassword request.
+
+Important: Related to configuration of nodemailer's createTransporter:
+ 1) password property is actually `pass` not password Pay attention to this!
+ 2) Also the 25 for port didn't work, so I specified the other proposed ports, for example 2525.*/
+/* 138-14. Password Reset Functionality Setting New Password:
+Let's create the last part of the password reset funcionailty, where we actually set the new password for the user.
+Some steps for resetPassword() function:
+1) First we get user based on the token
+2) Set the new password but only if token has not expired and there is a user
+3) Update the changePasswordAt property for the current user
+4) As usual in this functionality, log the user in, so basically send the JSON web token to the client
+
+The reset token that is actually sent in the url, is that non encrypted token, but the one that we have in the database is the encrypted one.
+So what we need to do, is to basically encrypt the original token again, so we can then compare it with the one that is stored, so the encrypted one in the database.
+We did sth similar before with the password, but with the password, we couldn't compare it as easily as we can with this one, again because for the
+password we used the quite complex bcrypt algorithm which in this case we didn't.
+So here it's very straightforward, all we need to do again, is to encrypt the token and compare it with the encrypted one in the database.
+We need the crypto package in step 1.
+
+With .digest('hex') on crypto.createHash('sha256').update(req.params.token) , we convert the hash to hexadecimal.
+This is the same as we had before, where we encrypted the original one and so we could refactor this into it's own function, but let's keep it simple there.
+
+Then(after creating the hashedToken) we need to get the user based on the token. Because that is the only thing that we know about the user right now. We have no
+email, we have nothing, so that token is the only thing that can identify the user and so we can now, query the DB for that token and it will then find the user which
+has that token.
+So this will find the user who has the token that will send via url, but right now, we're not taking the token expiration date into consideration.
+So what we want is to check if the passwordResetExpires property is greater than `right now`. Because if the expires date is greater than now,
+it means, it's in the future, which in turn means, that it hasn't yet expired and there's a very easy way in which we can actually do this right with this
+query(query is: User.findOne({passwordResetToken: hashedToken})) and that way is to include the property that we want to check a condition for it and in this
+case that property is passwordResetExpires and the condition is that the passwordResetExpires should be greater than `right now` and we do this with monogdb opeartors.
+So the way that I mentioned is:
+EX) User.findOne({ passwordResetToken: hashedToken, passwordResetExpires: {$gt: Date.now()} }))
+
+Date.now() will be a timestamp of current time, but behind the scenes, mongodb will then convert everything to the same and therefore be able to compare them
+accurately.
+So with the last snippet, we can at the same time, find the user for the token and also check if the token has not yet expired.
+
+In second step, we want to send an error if there is no user or if the token has expired. But that's, in this case, the same. Because if the token has expired,
+well, then it will simply not return any user, so we just need to check for !user for sending an error.
+
+But if there is no error and if next() is not called, well, then let's actually set the password. So we already got the user and now it's simple, so we just
+need to set user.password .
+
+Then we need to delete the passwordResetToken and the passwordResetExpires(set them to undefined) and then we need to save them, because without it, we only modify
+the document, it doesn't really update or save it to db.
+In this case, we actually don't have to turn off the validators, because indeed we want to validate. For example, we want the validator to confirm
+if the password is equal to passwordConfirm and so that validator automatically does all that work for us.
+
+We're gonna write the code for third step after fourth step, so let's code fourth step now.
+
+Log the user in, in other words, means send the JSON web token. We're already doing this in three different places, so in login, in signup and now in resetPassword.
+So sometime in the future, we will refactor that into it's own function.
+For logging in the user, we say:
+const token = signToken(<_id of user>);
+res.status().json({
+  ...,
+  token
+});
+
+Now let's test this(yeah, without coding the third step).
+Currently, the passwordResetExpires is already expired for the user that we want to test(because it took more than 10minutes for me do test this),
+so we need to ask for a new one, so hit the /forgotPassword route.
+Don't forget to paste the code for Tests tab that we already have for example for /signup , to /forgotPassword(update: not for this!!) route in postman.
+Because remember, that the /resetPassword gets back a JWT and so we want to save that into the environment variable, just like we did with all the others.
+So now, hit /forgotPassword, which again, takes some time, because of sending the email, then go to email, for now, it would be the trapmail inbox and then
+copy the received token in the email, then in postman, in /resetPassword, we use that copied token and paste it in url.
+Then in body, specify the new password and passwordConfirm for new password.
+Now let's intentionally, make a mistake for repeating the new password and put two different strings for password, to test the this too. For example:
+{
+  password: 'newpass123',
+  passwordConfirm: 'newpass1234',
+}
+if you send this request with the mentioned body, you get an error that says: Passwords are not the same!
+That's a validation error and remember, actually, that this is the whole reason why we need to use save() and not update() .
+So before, for updating tours, we used to use findOneAndUpdate() , but now, for everything related to passwords and to the user,
+Important: we ALWAYS(when want to run validators) use save(), becayse we always want to run all the validators, and above all, the save middleware functions.
+ So for example, the ones where the passwords are encrypted.
+
+So now if you send two same passwords, you get the token and also the password is resetted. Now let's see if that received token is actually valid, how?
+By going to a request that requires a token, for example getting all the tours. Remember: When we get a new token, because our workflow is automated in a way that
+when we get a response from a request that sends back a token, the old token gets replaced by the new received token AUTOMATICALLY, so we don't need to
+do anything at all, just do the request you want and it would have the new token.
+So our new token that we got from /resetPassword, actually works, because we tested it and now for the user that we reset his password,
+the passwordResetExpires and passwordResetToken should now be GONE(not empty, GONE), because we set them to undefined.
+
+Now let's code the third step and we want to update the passwordChangedAt property for that current user and we're gonna do this using middleware in userModel.js .
+So create a pre save middleware for userSchema and the function that we pass to a pre save middleware is gonna run right before a new document is saved and so it's the
+perfect place for specifying passwordChangedAt property and we could of course have done it in authController right after we set those two properties to undefined, but
+we really want this to happen, kind of, AUTOMATICALLY, so kind of behind the scenes, because later on, we will have another place where we update the
+password and then we would make sure that we're including the same code there TOO but instead with the way we do this, again, it happens
+kind of behind the scenes without us having to worry about it at all.
+
+Now when exactly do we want to set the passwordChangedAt property to `right now`?
+We only want it when we modified the password property and there's a trick:
+!this.isModified('<name of property>') means if we have not modified that property that we passed to isModified() .
+
+There, we say if we didn't modify the password property, then do not manipulate the passwordChangedAt.
+But what about creating NEW document?
+Well, when we create a new document, then we did modify the password and then we would set the passwordChangedAt property, right?
+Well, in the current implementation, we actually would. BUT there is sth else that we can use here. So basically we want to exit that pre save middleware function
+in userModel right away, if the password has not been modified OR if the document is new, and so we can use the isNew property with `this` keyword.
+So if the code passes that if statement in pre save middleware, then we set the passwordChangedAt property.
+
+Now in theory, the current code for that pre save middleware should work just fine. But actually in practice, sometimes a small problem happens and that problem is
+that sometimes saving to the database is a bit slower than issuing the json web token, making it so that the changed password timestamp is sometimes set a bit AFTER
+the json web token has been created and so that will then make it so that the user will not be able to login using the new token. Because remember, the whole
+reason this timestamp(passwordChangedAt) actually exists, is so that we can compare it with the timestamp on the json web token. Where is that check?
+In step 4 of protect, where we check if the user has changed the password after the token was issued and so where we then create that new token in resetPassowrd() ,
+by using signToken() , sometimes it happens that the token that we create there, is created a bit BEFORE the passwordChangedAt timestamp has actually been created which
+happens in pre save middleware in userModel and so we just need to fix that by subtracting one second or 1000 milliseconds in that pre save hook and so that then
+will put the passwordChangedAt, one second in the PAST(because we used Date.now to set the CURRENT timestamp, but we subtract it by 1 second which means the past!), which
+will then of course not be 100% accurate!!, but that's not a problem at all. Because one second there doesn't make any differences at all.
+It's a small hack, but again, it's no problem.
+
+So putting that passwordChangedAt one second in the past, will then ensure that the token is always created AFTEr the password has been changed or the passwordChangedAt
+is saved to db in that pre save middleware.
+
+Important: For testing, do a new forgotPassword request and then it will send an email to the specified email in that request ot forgotPassword, go to that email and grab the
+ sent token and paste it as a param in /resetPassword and then it will reset your password and also give you a new token and also in compass, for the user that
+ changed his password, it will set a property named passwordChangedAt. Now if you try to use that new token(for example to access a protected route), it would be good to
+ go!
+
+We finished our password reset functionality.
+
+The authentication and authorization part of this section is kinda finished.
+
+Next, we will implement the functionality for updating the user and also deleting it and after that, we will talk about security.*/
+/* 139-15. Updating the Current User Password:
  */
-
-
-
-
 

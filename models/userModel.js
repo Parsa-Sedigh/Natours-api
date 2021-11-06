@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
@@ -37,12 +38,14 @@ const userSchema = new mongoose.Schema({
       message: 'Passwords are not the same!'
     }
   },
-  passwordChangedAt: Date
+  passwordChangedAt: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date
 });
 
 userSchema.pre('save', async function (next) {
   // Only run this function, if passwords was actually modified
-  if (!this.isModified('password')) { // this referes to current document and in this case, the current user
+  if (!this.isModified('password')) { // this refers to current document and in this case, the current user
     return next();
   } else {
     // Hash the password with cost of 12
@@ -53,6 +56,14 @@ userSchema.pre('save', async function (next) {
     this.passwordConfirm = undefined;
     next();
   }
+});
+
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+
+  // This subtracting is explained in section-10 pamphlet in 138-14 video
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
 });
 
 // this instance method is for checking the password
@@ -67,6 +78,15 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   }
 
   return false;
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(12).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  console.log({resetToken}, this.passwordResetToken, Date.now());
+
+  return resetToken;
 };
 
 const User = mongoose.model("User", userSchema);
