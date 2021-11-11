@@ -1225,5 +1225,74 @@ The authentication and authorization part of this section is kinda finished.
 
 Next, we will implement the functionality for updating the user and also deleting it and after that, we will talk about security.*/
 /* 139-15. Updating the Current User Password:
+Over that last few vids, we allowed a user to reset his password and then create a new one. But now we also want to allow a logged-in user to simply
+update his password without having to forget it! in other words, without that whole reset process and let's do that in our authentication controller and create
+a new function named updatePassword.
+
+This password updating functionality is only for logged-in users, but still we need the user to pass in his current password. So in order to confirm
+that the user actually is who he says he is, so just as a security measure. Because imagine that someone would find your computer open
+and then be able to change passwords on the sites that you have currently open, without being prompted for a password again and so that would
+basically log you out of all your existing applications which would be of course be a terrible exprience and so as a security meassure,
+we always need to ask for the current password before updating it.
+So the steps that we need to take in order to implement this functionality:
+1) First we need to get the user from the collection
+2) We need to check if the POSTed password is correct
+3) So if the password is correct(we check it in previous step) then, update the password
+4) Again, log the user in, so basically to send the JWT back to the user(client), now logged in with the new password that was just updated
+
+These are all similar to what we already did before.
+
+Where is the id of user coming from in updatePassword() coming from?
+Remember that that updatePassword() is only for authenticated or logged-in users and therefore, there, we will already have
+the current user on our request object and that user object is coming from protect middleware.
+Important: So any routes that are protected, have access to current user that requested that route, because we set the user object on req object(which is
+ the object that we share between middlewares), in protect middleware.
+
+In step1, we need to EXPLICITELY ask for password by using select('+password'), because by default, it is not included in the output. Why we need the password?
+Because we want to compare it with the one that's stored in the database and for that, just like before, we're gonna use the correctPassword instance object which is
+available on all the user docs and it takes in the candidate password first and then the actually user password.
+
+Just like before, we want to create an error in step2, if the current password is not correct.
+
+Learn: 401 status code means unauthorized.
+
+So if we make it to third step, it means the password is correct and it means we can update the password.
+
+When we save() the document, the validation will be done automatically by the validators that we specified on the schema.
+
+In third step, when we save() , we do not turn off the validation, because we want the validation to happen. Because we want to check if the passwordConfirm
+is the same as the password.
+
+Why we didn't use findByAndId() in third step?
+For two reasoons:
+1) because the validator that we specified on passwordConfirm won't gonna work and that's because `this.password` in validate of passwordConfirm field, is not defined
+when we update, so when we use findByIdAndUpdate() . Because internally, behind the scenes, mongoose does not really keep the current object in memory and so
+this.password in a validator when updating or some other situation, is not gonna work and is only gonna work on create and save.
+So keep in mind not to use update for anything related to passwords.
+Also those two pre save middleawres also are not gonna work. So if we used update() for updating the password, then that password would not be encrypted
+which happens in that first pre save middleware and then also the passwordChangedAt timestamp would also not be set, because it's in second pre save middleware.
+So we really need to do it with save() .
+
+Create a function named createdAndSendToken() .
+
+We used 'my' word in /updateMyPassword route, because it's for the currently logged in user, remember, this only works for logged in users and so we need to use
+the protect middleware before the actual route handler which also will put the user object which we want it in the next middleware.
+
+For testing this, in body of request, passwordCurrent is the old password, password is the new one, passwordConfirm is the confirm of new password.
+This req only works if user is already logged in. So use the /login req and then the received token will be stored into the JWT environment variable in
+postman automatically. So in /updateMyPassword, in order to authenticate, we need to USE that JWT env variable, so go in Authoriazqtion tab and select
+Bearer Token and put {{JWT}} which the JWY is where the user id is coming from.
+Also when updating the password, look at the compass and user's doc to see if the hashed password changes or not after updating the password. So look at the
+before and after of password field of user doc.
+
+Also after changing the password, the passwordChangedField would be created if was not created before.
+
+Also we need to paste the code for Tests tab for storing the new jwt, in the /updateMyPassword req.
+
+This was how we update user's password.
+
+Next, we're gonna implement of other user data, stuff like email or password. */
+/* 140-16. Updating the Current User Data:
  */
+
 
