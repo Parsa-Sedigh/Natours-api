@@ -1223,7 +1223,10 @@ We finished our password reset functionality.
 
 The authentication and authorization part of this section is kinda finished.
 
-Next, we will implement the functionality for updating the user and also deleting it and after that, we will talk about security.*/
+Next, we will implement the functionality for updating the user and also deleting it and after that, we will talk about security.
+
+Note: /forgotPassword and /resetPassword don't need the user to be logged in, because we didn't use protect middleware before them, so in postman we didn't
+use the Bearer Token in their Authorization tab.*/
 /* 139-15. Updating the Current User Password:
 Over that last few vids, we allowed a user to reset his password and then create a new one. But now we also want to allow a logged-in user to simply
 update his password without having to forget it! in other words, without that whole reset process and let's do that in our authentication controller and create
@@ -1293,6 +1296,135 @@ This was how we update user's password.
 
 Next, we're gonna implement of other user data, stuff like email or password. */
 /* 140-16. Updating the Current User Data:
+In this vid, we will allow the currently logged in user to manipulate his user data and now by implementing user updates,
+we're really leaving the domain of authentication and are moving more into real user related stuff and so instead of using the authentication controller file now,
+let's implement this updating functionality right in the userController and create updateMe handler function and it's named updateMe because it's for updating
+the currently authenticated user. Later on, we will then also implement the updateUser function but that is for like an administrator to update all of the
+user data, while the user itself can only update, for now at least, the name and the email address.
+
+Note: We're updating the user data in a different route than updating the user password, because usually in a typical web app, that's always
+how it's done. So you have usually one place where you can update your password and then another place where you can update data about
+the user or the account itself and here we're following that pattern.
+
+1) The first thing we wanna do in updateMe() , is to create an error if the user tries to update the password or passwordConfirm
+2) But then if not(he didn't POST password), we need to update the user document.
+
+The /updateMe route because of having protect middleware before it's handler, is a protected route, so only the currently authenticated user can update
+the data of the current user.
+So all of this is of course really secure, again because the id of the user that is gonna be updated comes from req.user which was set by that
+protect middleware, which in turn, got the id(id of user) from the JWT and since no one can change the id in that JWT without knowing the secret,
+well, we know that the id is then safe because of that and so because of this, everything is safe.
+
+Let's create a folder in postman and put the stuff that is related to authentication into it's own folder and call it Authentication.
+
+Remember that after signing up as a new user, we get a new token for that new user and it would be automatically already logged in.
+So you can use other requests and that req would be for that new user that was just logged in.
+
+Note: If you have no authentication for a request, in Authorization tab of postman, you can select "No Auth" option.
+You can test the reqs that need a user to be logged in, with No Auth option in postman to test the security.
+
+Important: Now we want to update the user document and we could try to do it with user.save() (so just like before, basically getting the user first
+ then updating the properties and then by the end, saving the document with .save() (remember that we don't use update() because it doesn't trigger the validators and
+ other middlewares in model)).
+ But the problem with that is that there are some fields that are required which we're not updating and because of that, we will get some error.
+I did this approach and commented it out, which is in step2. If you use that approach, you will get error. Like: Please confirm your password and that's
+because passwordConfirm is a required field but we did not specify it and so the save() method is not really the correct option in this case.
+Instead we can use findByIdAndUpdate() . We could not use that before, for all the reasons that I explained multiple times, but now, since we're not
+dealing with passwords(which are the things that are set in middlewares and those middlewares are not triggered in update() methods of mongoose), but only with
+this non-sensitive data like name or email, we can now use findByIdAndUpdate() .
+
+We set the `new` option set to true in step2 of updateMe() , so that it returns the new object, so basically the updated object instead of the old one.
+Also we used runValidators: true, because indeed we want mongoose to validate our document. For example if we put in an invalid email adresss,
+that should be caught by the validator and return an error.
+
+Important: Why we're not putting req.body as second arg of findByIdAndUpdate() in step 2?
+ Because we actually do NOT want to update EVERYTHING that's in the body. Because let's say the user puts, in the body,
+ the role for example, so we could have body.role set to admin and this would then allow ANY user to change the role to adminstartor and
+ that can not be allowed or the user could also change their resetToken or when that reset token expires and all of that should not
+ be allowed of course.
+So we need to make sure that the object(the object that will contain the data that's gonna be updated) that we pass as second arg of findByIdAndUpdate() ,
+only contains name and email. Because for now, these are the only fields that we want to allow to update, and so basically we want to filter
+the body, so that in the end, it only contains name and email and nothing else. So if then the user tries to change the role, that will then
+be filtered out, so that it never finds it's way to our DB. So we want to create a variable named filteredBody and we're gonna create a function named
+filterObj and as it's first arg, we pass the data or the object that we want to filter and then we pass a couple of args, one for each of the fields(so the name of the
+fields that we want to keep) that we want to keep in the object and filter out all the rest.
+
+For testing, check if with /updateMe , you can update a role of a user, which this is not allowed!
+
+Next, we will implement the functionality of deleting the current user. So we want to allow a user to delete himself when he no longer wants to be part of our
+application.*/
+/* 141-17. Deleting the Current User:
+We want a user to be able to delete his account.
+When a user decides to delete his account, we actually do not delete that document from the database. But instead, we actually just set the account to inactive.
+So that the user might at some point in the future, reactivate the account and also so that we still can basically access the account in the future, even if officially,
+let's say it has been deleted.
+
+To implement this, first of all, we need to create a new property in our schema named `active` and any user that is created new, is an active user by default.
+Also we do not want to show this field in the output, because we want to hide this implementation detail from the user and so we don't want anyone to know
+that this flag, so this active flag is here. So in the field definition, we say: select: false.
+
+Now to delete the user, all we need to do is to set that active flag to false.
+Now create the deleteMe handler.
+
+We know that the deleteMe() handler only works for logged in users and so the user id convinently stored at req.user.id .
+
+Learn: 204 code is for deleted which will then make it so that in postman, we do not even see the response we sent to client!
+ But still send the response in this case too. Because that's always the best practice.
+This is what we did in deleteMe() .
+
+Yeah we use the delete http method for this request, but again, we will not acutally delete a user from the database, but as long as the user is no longer
+accessible anywhere, then it's still okay to use this http method here.
+
+Because /deleteMe is a protected route, so we need to be signed in, therefore in Authorization tab of req, set TYPE to Bearer Token for authorization header.
+We don't need to pass in any data in body and url, because the only data that is needed is the current user id and that one is encoded
+inside of our json web token.
+
+Test the req:
+Before sending that req, let's send a req for getting all the users and then send the /deleteMe and then send again the get all users req to see the chages.
+Note: The last user that you logged in with his credentials, is the one that his token is being used and stored in the jwt env variable in postman and so for example
+when we're sending a delete req for deleting a user, it will be based on the id coming from that user token.
+
+But now, currently, if we get all the users, the results looks exactly the same and that's because we're not leaking the active field to the user.
+But currently, the active field is set to false in database, for deleted user doc.
+So active field is only visible for us in database, but not for the client.
+
+Now as a last step, we then do not want to show up the inactive users in the output of get all users request.
+
+How we could implement this?
+We're gonna use a query middleware which is perfect for this, because now, we can add a step before any other query that we're doing then, somewhere in our app.
+
+Create that middleware in userModel and create a pre middleware which is sth that happens before a query and that query will be a find which is what makes that
+query middleware.
+Important: For second arg of a query middleware, use a normal function with function keyword, because otherwise, we're not having access to the `this` keyword or at
+ least, it won't have the value that we expect it to have.
+
+Remember that for the string we pass for first arg of pre middleware, we used a regular expression before, to say that we want this middleware function
+to apply to every query that starts with 'find'. So not JUST find, but also stuff like findAndUpdate, findAndDelete and all queries like that.
+So use a regular expression that is looking for strings that start(by using ^ symbol) with 'find'.
+Important: For using regexp, don't use quotes around it.
+
+So that is query middleware and therefore, `this` points to the current query.
+
+Now in getAllUsers handler, we have a find() query and now before that query is actually executed, we want to add sth to it, which is, that we only
+want to find documents which have the active property set to true.
+So in pre find query middleware in userModel.js , we add a filter object to find() with active: true .
+
+Now if you send a req for get all users, the docs that have active set to false, won't show up in output, because they do not match the query
+that we wrote in pre find query middleware. BUUUUUT! WAIT!
+If you do the query now, you won't get any results at all and that's because the other docs that we currently have in database that don't have active: false,
+they do not have EXPLICITELY the active property set to true.
+
+So instead of using active: true for filter object in query middleware, we say: active should not be false. So use $ne operator which should be in it's own object, so:
+{active: {$ne: false}}
+
+So now, all documents where active property is not equal to false, should now show up.
+
+Recap: This is how we delete our users, while effectively not deleting them from the db. So we're not deleting docs, we're only making them as inactive.
+
+With this, we finished the authentication and authorization part of this section. So everything that was related to these topics and also to users like
+updating and deleting users, that's also kind of a part of authentication and authorization.
+Now in the rest of this section, we're gonna talk about security. Because that's also kind of related to authentication.*/
+/* 142-18. Security Best Practices:
  */
 
 
