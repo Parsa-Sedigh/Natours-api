@@ -1425,6 +1425,178 @@ With this, we finished the authentication and authorization part of this section
 updating and deleting users, that's also kind of a part of authentication and authorization.
 Now in the rest of this section, we're gonna talk about security. Because that's also kind of related to authentication.*/
 /* 142-18. Security Best Practices:
+Everything that we did in this section so far, was to secure our application and our users' data as good as possible and we can do a lot of things to
+achieve that, but all of this information was kind of spread our all over these lectures. So tutor decided to create this quick summary
+with many best practices that we already implemented and that we're still gonna implement in the rest of this section. So let's look at
+some things to properly secure your applications and data and we're gonna look at a couple of common attacks and give some suggestions to prevent them.
+
+Security best practices and suggestions:
+First up, we have the event of a compromised database. Meaning that an attacker gained access to our database. Of course, this is an extremely severe problem,
+but to prevent even bigger problems, we must always encrypt passwords and password reset tokens just like we did in the videos in this section.
+This way, the attacker can't at least steal our user's passwords and also can't RESET them. Now about actually preventing attacks,
+let's talk about the brute force attack, where the attacker basically tries to guess a password by trying millions and millions of random passwords
+until they find the right one and what we can do is to make the login request really slow and the bcrypt package that we're using, actually does just that.
+Another strategy is to implement rate limiting, which limits the number of requests coming from one single IP and this one we're gonna implement
+in one of the next videos. Also a nice strategy is to implement a maximum number of login attempts for each user. For example, we could make it so that
+after 10 failed attempts, user would have to wait one hour until he can try again.
+Now we're not gonna implement this functionality in this section, but please feel free to experiment with it on your own.
+
+Next, there is the cross-site scripting attack, where the attacker tries to inject scripts into our pages to run his malicious code. On the client side,
+this is especially dangerous because it allows the attacker to read the local storage which is the reason why we should never ever store the json web token in
+local storage. Instead, it should be stored in an http-only cookie, that makes it so that the browser can only receive and send the cookie but cannot access or
+modify it in any way and so that then makes it impossible for any attacker to steal the jwt that is stored in the cookie. We're implmenting this in a second.
+Now, on the backend side, in order to prevent XSS attacks, we should sanitize user input data and set some special HTTP headers which makes these attacks a bit more
+difficult to happen and express doesn't come with these best practices out of the box, so we're gonna use middleware to set all of these special headers.
+
+Next, we have denial-of-service attacks. It happens when the attacker sends so many requests to a server that it breaks down and the application becomes unavailable.
+Again, implementing rate limiting is a good solution for this. Also we should limit the amount of data that can be sent in a body in a POST or a PATCH request and
+also, we should avoid using so-called evil regular expressions in our code and these are just regular expressions that take an exponential time to run for non-matching
+inputs and they can be exploited to bring our entire application down.
+
+Next, we have the no-sql query injection attack and query injection happens when an attacker instead of inputting valid data, injects some query in order to create
+query expressions that are gonna translate to true. For example to be logged in even without providing a valid username or password. It's a bit complex
+and you should definitely google it to read more. But what you need to know is that using mongoose is a pretty good strategy for preventing these kind of attacks.
+Because a good schema forces each value to have a well-defined data tab, which then effectively makes this type of attack very difficult to execute. However, it's
+always a good idea to still sanitize input data, just to be sure and we will take care of this later.
+
+Now a couple of best practices and suggestions on how to improve the authentication and authorization mechanisms that we implemented.
+- First, in a production application, all communication between server and client needs to happen over HTTPS. Otherwise, anyone can listen into the conversation
+and steal our JWT.
+Always create random password tokens, not generated from dates or sth like that. Because they are effectively passwords and so, they should be treated
+as such. Plus, always give them expiry dates, just like we implemented it. and we also implemented that a certain jwt is no longer valid after the user
+has changed his password. So we basically revoke the token as soon as the user changes the password, which makes a lot of sense, but again, many tutorials
+out there simply do not do that.
+Another big thing is to never ever commit a configuration file, like for environment variables, to a version control like git. In fact, do not upload it ANYWHERE,
+because this file contains the most sensitive data of the entire application. For example, if someone gets access to your json web token secret, then your entire
+authentication process is compermised.
+A small detail is to whenever there is an error, do not send the entire error to the client. So stuff like the stack trace could give the attacker
+some valuable insights into your system and so of course, we don't want that.
+
+Next, we can use the csurf package to fight a type of attack called cross-site request forgery, which is an attack that forces a user
+to execute unwanted actions on a web application in which they are currently logged in. We're not gonna do that in this section though, but the totur
+wanted to mention it here.
+
+Next, we could require the user to re-authenticate before performing a high-value action. For example, making a payment or deleting sth.
+
+Another feature that you can implement is a blacklist of untrusted tokens. So we already know that there is not really a way to log users out of the application if they
+show some malicious activity, but what we can do is to create a list of untrusted tokens that are then validated on each request.
+
+Next, a feature that we could have implemented is to confirm the email address after an account is first created. So basically by sending a link to the user's
+email, like many real apps actually do. But the tutor wanted to keep things simple which is why he didn't do this here.
+
+Important: A big feature that many apps have is the concept of refresh tokens which are basically to remember users. So to keep them logged in forever or until they
+ choose to logout. Our current implementation makes it so that the user has to basically login again after the jwt expires, but with refresh tokens, that's no longer
+ necessary.
+It's a bit complex to implement and so it's a feature for another time.
+
+The last one that we could have implemented, is two-factor authentication. Basically with this, after logging into the app, the user needs to perform a second
+action to really get authenticated and typically that is to insert a code sent via text message to a mobile phone.
+
+Sth that we will implement in the rest of the section is to prevent parameter pollution. For example, try to just insert two field parameters
+into the query string that searches for all tours and if you do that, you will find that there will be an error, because our app is not prepared for that and so
+attackers try to use these kind of weaknesses to crash applications, which is not good and so we need to fix that.
+
+
+Compromised database:
+- Strongly encrypt passwords with salt and hash(bcrypt)
+- strongly encrypt password reset tokens(SHA 256)
+
+Brute force attacks:
+- Use bcrypt(to make login request slow)
+- implement rate limiting(express-rate-limit)
+- implement maximum login attempts*
+
+Cross-site scripting(XSS) attacks:
+- store JWT in HTTPOnly cookies
+- sanitize user input data
+- set special http headers(helmet package)
+
+Denial-of-service(DOS) attack:
+- implement rate limiting(express-rate-limit)
+- limit body payload(in body-parser)
+- avoid evil regular expressions
+
+NoSQL query injection:
+- use mongoose for mongodb(because of SchemaTypes)
+- sanitize user input data
+
+Other best practices and suggestions:
+- always use https
+- create random password reset tokens with expiry dates
+- deny access to jwt after password change
+- don't commit sensitive config data to git
+- don't send error details to clients
+- prevent cross site request forgery(csurf package)
+- require re-authentication before a high-value action
+- implement a blacklist of untrusted jwt
+- confirm user email address after first creating account
+- keep user logged in with refresh tokens
+- implement two-factor authentication
+- prevent parameter pollution causing uncaught exceptions*/
+/* 143-19. Sending JWT via Cookie:
+The jwt should be stored in a secure http-only cookie, but right now, we're only sending the token as a simple string in our JSON response. So in this vid,
+let's also send the token as a cookie. So that the browser can then save it in this more secure way.
+
+So where in our code do we actually send the token to the client?
+In createSendToken() function of authController. Before, we had the code in that function, in many different places, but then we refactored all of that
+just into that createSendToken function.
+
+The way cookies work in general:
+First of all, a cookie is basically just a small piece of text that a server can send to clients. Then, when the client receives a cookie,
+it will automatically store it and then automatically send it back along with all future requests to the same server.
+So again, a browser automatically stores a cookie that it receives and sends it back in all future requests to that server where it came from.
+
+For now, this is not gonna be really crucial for us, as we're only testing the api using postman, but a bit later, when we're gonna render dynamic webpages and
+really interact with the browser, then it will become really crucial that the browser sends back the token automatically in each request and by then,
+we will talk more about that.
+But anyway, let's now look how to actually create and send a cookie.
+
+In order to send a cookie, all we have to do, is to attach it to the response object like:
+res.cookie(<name of cookie>, <the data that we want to send in the cookie>);
+
+The expires property in options object of .cookie() will make it so, that the browser or the client in general will delete the cookie, after it has expired.
+And in this case, we set the expiration date similar to the one that we set in the jwt.
+So let's create a new env variable for that, because the json web token package can then work with this format, but in js, this is kind of meaneingless and so
+instead, let's create a env variable with a real number and call it: JWT_COOKIE_EXPIRES_IN and give it a value of 90 for 90 days, but without the word 'd'.
+So without the 'd', so that now, we can make operations with it, because we will need to convert it to milliseconds.
+
+In js, when specifying dates, we always need to say: new Date() .
+In js, right now is: Date.now()
+
+The secure property in options object of .cookie() , if is set to true, the cookie will only be sent on an encrypted connection. So basically where we're using
+https.
+If the httpOnly option is set to true, it will make it so, that the cookie cannot be accessed or modified in any way by the browser and so this is crucial in order
+to prevent those cross-site scripting attacks.
+So all the browser is gonna do when we set httpOnly: true , is to receive the cookie, store it and then send it automatically along with every request.
+
+So this is how we define the cookie(which is the code inside parentheses of res.cookie()) and then we send it using res.cookie() .
+
+Now if we wanted to test this right now, it wouldn't work. Because right now, we're actually not using HTTPS and so because of that secure: true ,
+the cookie would not be created and not be sent to the client and so we only want to actiavte that secure: true, in production.
+So export that object which is options of .cookie() into a separate variable named cookieOptions and we only want the secure: true only when we're in production.
+So we check the NODE_ENV.
+
+With this, we can now test this and I'm gonna test it with creating a new user, so go to /signup and it's response would have a difference than the past which is
+now, we get one cookie in the Cookie tab of response and it's expiration date is 90 days from the moment it got created and currently the secure property of cookie
+is set to false, because we're not in production.
+
+Also we can see all the cookies that we have in the Cookies tab in top right corner and in this case, we can see the one cookie that we received
+from the specified domain which in this case is 127.0.0.1 .
+
+I want to get rid of the password property which is in response or output of /signup (we do this in createSendToken function).
+So in our schema, we actually have it set to select: false , so that it doesn't show up when we query for all the users. But in this case,
+it comes from CREATING a new document and that's different and that's why we still see the password field in response of /signup and there all we need to do is:
+user.password = undefined;
+and that should remove the password from the output or response.
+
+Then try the /signup route again, to see if the password doesn't show up anymore.
+
+Now if you see the Cookies tab in top right corner of postman, you STILL have only one cookie, because the old one was now basically overwirtten by that new one
+and that's because they have the same name. So the name is like the unique identifier for a cookie and so, if we receive one with a name that was already given,
+well, then the old one is simply replaced.
+
+So this is how we send an HTTP-only cookie and again, we will talk more about this when we build our dynamic website.*/
+/* 144-20. Implementing Rate Limiting:
  */
 
 
