@@ -1597,6 +1597,153 @@ well, then the old one is simply replaced.
 
 So this is how we send an HTTP-only cookie and again, we will talk more about this when we build our dynamic website.*/
 /* 144-20. Implementing Rate Limiting:
- */
+Let's implement rate limiting in order to prevent the same IP from making too many requests to our API and that will then help us preventing attacks
+like denial of service, or brute force attacks.
+That rate limiter will be implemented as a global middleware function.
+Basically what the rate limiter is gonna do, is to count the number of requests coming from one IP and then, when there are too many requests,
+block these requests and so it makes sense to implement that in a global middleware, so we do that in app.js and the rate limiter that we're gonna use,
+is an npm package called express-rate-limit . So npm i express-rate-limit .
+In object we pass to rateLimit, we define how many reqs per IP we're gonna allow in a certain amount of time. windowMs property there is the time window.
+What we want to allow there, is 100 requests per hour(which an hour is: 60(for minutes) * 60(for seconds) * 1000(for milliseconds)).
+
+Again, what that will do, is to allow 100 requests from the same IP in one hour and if that limit is then crossed by a certain IP, they will get back an error message and
+there we can specify that message in message property.
+
+We kind of need to find a balance which works best for our application, for example, if you're building an API which really needs a lot of requests for one IP,
+then of course, the max property should be greater. So adapt it to your own application, so that you don't make it unusable because of that limiter.
+
+That limiter constant is basically a middleware function. So rateLimit is a function which will(based on the object we pass to it), create a middleware function
+which we now can use using app.use() .
+So we can do it like: app.use(limiter);
+but what we actually want, is to limit access to our /api route. So we write: app.use('/api', limiter);
+So we want to apply this limiter only to /api and that will then affect all of the routes that start with /api .
+
+Now let's try this. For example send a request to /api/v1/tours and then in Headers tab of response, you can see our rate limiter creates X-RateLimit-Limit and
+X-RateLimit-Remaining and for the first time, X-RateLimit-Remaining value is 99 . Because we already did one request. Now what happens if we do
+another one?(you can use other /api routes like getting ONE tour)
+Even if the request send back an error, in the headers of response, we can see that X-RateLimit-Limit is still 100 and X-RateLimit-Remaining is 98.
+
+Also we have X-RateLimit-Reset header, so the time stamp where it is resetted. So that one hour window that we specified before.
+
+Now if in between this window time, our app is restarted(like when we save it in dev mode), after sending another request after the server was reset, you see the
+X-RateLimit-Remaining is back to 99, so it started from the beginning. So our app cannot crash during that window time, because otherwise, that will then
+reset the limit AS WELL.
+
+Now in order to test the error message for rate limit, let's make max to 3 for example.
+Now if you make 4 req, you would see the error message in forth time and it will automatically set the status code to 429 which means too many requests.
+So again, this will help us try to prevent denial of service and also brute force attacks, where an attacker tries to guess the password of some user, by using
+brute force.
+So that is api limiting.*/
+/* 145-21. Setting Security HTTP Headers:
+We're gonna use another npm package in order to set a couple of really crucial security http headers. So to set these headers, we will yet again use a middleware
+function which will come again from an npm package called helmet which is kind of a standard in express development, so everyone who's building an express app,
+should always use this helmet package, because again, express doesn't use all the security best practices out of the box and so we need to manually go ahead
+and put them there.
+
+By calling helmet() in app.use() , it will then produce the middleware function that should be put right there.
+Important: Remember that in app.use() , we always need a function and NOT a function CALL.
+In this case, we're calling helmet() function and it will then in turn RETURN a function that's gonna be sitting there until it's called by EXPRESS(so not by US) and
+it's best to use this helmet package early in the middleware stack, so that these headers are really sure to be set. So don't put it like somewhere at the end,
+put it right in the beginning, so I put it at the very beginning.
+
+Now we're really growing our middleware stack in app.js, so let's just give each of them a name by writing some comments.
+
+Now let's implmenet the functionality that we limit the amount of data that comes in in the body. For doing this, in () of express.json() that we pass to
+app.use() in app.js , we can specify some options and for that as always we pass an object and we use the limit property and we set it to '10kb' and the package
+will then understand, it will parse this string into a meaningful data and now, when we have a body larger than 10kb, it will not be accepted.
+
+Now let's do a request and then take a look at all the headers that it gives us(because helmet will add some new headers).
+So let's make a req for example for getting all the tours and now you see we have 14 headers(in my case 19!). The new ones are:
+X-DNS-Prefetch-Control, Strict-Transport-Security, X-Download-Options, X-XSS-Protection and the browser understands these headers and can then act on them.
+
+Helmet package is a collection of multiple middlewares and some of them are active by default and if you thing you need some of the other ones that are not active,
+you can turn them on specifically, but we're fine with the default options.*/
+/* 146-22. Data Sanitization:
+Data sanitization means to clean all the data that comes into the application, from malicious code, so code that is trying to attack our app and in this case we're
+trying to defend against two attacks and we will do it after the body parser(app.use(express.json(...))) middleware in app.js .
+
+The body parser middleware, reads the data into req.body and then ONLY AFTER that, we can actually clean that data and the place we're gonna clean the data now,
+is a perfect place for doing the data sanitization.
+
+Now before doing anything else, let's see why it is so extremely crucial to defend against this type of attack. We will now simulate a NoSQL query injection which can
+be very powerful. Go to postman and try to login as someone, even without knowing their email address. So by simply giving a password, we will
+be able to login but even without knowing the email address. So again, we're gonna do that by simulating a NoSQL query injection and the easiest way of
+doing it, goes like this:
+In body of request in postman, instead of specifying a real email, we specify a query basically:
+{
+  "email": {"$gt": ""},
+  "password": "<a real password of a user>"
+}
+
+Now if you send the req, you would be logged in as admin. So we got our access token. So again, without knowing the email address, only the password, we were
+able to login and note that it's not very difficult to find a bunch of really popular passwords that are used on every application and so this kind of
+attacks is what we need to protect against.
+Note: This didn't work for me.
+
+So this example works, because the {"$gt": ""} expression is always true.
+Now let's see this example in compass and write: {"email": {"$gt": ""}} in the filter input of compass and then click on find, which will return all of the users.
+So basically all of the users match this query. Again, it is because {"$gt": ""} is always true and that will then select all the users.
+So that malicious query injection allowed us to login only knowing the password.
+
+To protect ourselves against this, let's install another package which is called: express-mongo-sanitize and the other one that we will need later in this video is:
+xss-clean(not xss).
+By calling mongoSanitize(), it will then return a middleware function that we can use in app.use() and this is enough to prevent(protect?) us against the kind of
+attack that we just saw before.
+What does the app.use(mongoSanitize()) middleware does is to look at the request body, the request query string and also req.params and then it will filter out
+all of the dollar signs and dots. Because that's how mongodb operators are written. By removing those things, these operators are then no longer going to work.
+Now try that request with query injection again. Now it will throw an error that says: CastError: Cast to string failed for value ... ." and we can no longer use this
+trick or query injection attack to login.
+So that fixes the first problem.
+
+By using app.use(xss()) it will then clean any user input from malicious html code, basically. Imagine that an attacker would try to insert
+some malicious html code with some javascript code attached to it and so if that would then later be injected into our html site,
+it could really create some damage then and using this middleware, we prevent that by converting all those html symbols.
+
+Now as I said before, the mongoose validation itself is actually already a very good protection against xss, because it won't really allow any crazy stuff
+to go into our database as log as we use it correctly. So whenever you can, just add some validation to your mongoose schemas and that should then mostly protect you
+from cross-site scripting, at least on the server side.
+
+Let's test this app.use(xss()) middleware as well. For that, create a new user and as it's name field, add some html code like:
+"name": "<div id='bad-code'>Name</div>" and then in response and in it's name property you see that the xss module that we used, actually converted those
+html symbols like < , into html entity like &gt; , so the name property of response which is saved into db is: "name": "&lt;div id='bad-code'>Name&lt;/div>"
+
+Now you can delete the user that you just created for testing xss attack from db.
+
+So that is our quick and easy protection against some of these attacks using data sanitization.
+Also remember that the validator function library that we used before also has a couple of cool sanitization functions in it and so we could also
+manually build some middleware using those, but again, that's not really necessary, because mongoose already enforces a strict schema
+and so then, if it encounters something weird, it will then throw an error and that's already a good protection.*/
+/* 147-23. Preventing Parameter Pollution:
+Why we need to prevent parameter pollution?
+In postman, first login, so now we can use the get all tours route and in the url of that route, add some parameters to the query string,
+like: {{URL}}/api/v1/tours?sort=duration&sort=price
+Now this doesn't make much sense, because we're prepared to only have ONE sort parameter and now if you send the request, you will get an error
+that says: this.queryString.sort.split is not a function and that is happening in apiFeatures file. Because in that file, we're trying to split the sort property
+which we expect to be a string, but right now, since we defined it TWICE in the query string, express will create an array with these two values, duration and
+price in this case. So we cannot split(), because split() only works on strings and so this is a typical problem which attackers
+can then make use of.
+We're now gonna use a middleware which will simply remove these DUPLICATE fields and that package is called: hpp which stands for http parameter pollution.
+The hpp() should be used by the end, because what it does is to clear up the query string.
+Now if you try the request that I mentioned again, the error is gone and so now, it's only using the last value for duplicated field which in this case, that
+value is 'price'. So it's sorting the price and we start with the lowest one and then moving up all the way to the most expensive one.
+So that's kind of fixed, but we actually WANT some duplicate properties or fields in some cases. For example, we might want to search for tours
+with the duration of nine and five. Like:
+{{URL}}/api/v1/tours?duration=5&duration=9
+and we want this to work, but right now it ONLY finds the tour with nine days(it only look at the LAST one). But if we hadn't our hpp middleware(comment it out
+to test this), then in the case of duplicated duration field in query string, then we would find the right ones, in this case, 3 tours, two tours with duration 5 and
+one tour with 9(so it's considering all of the duplicated values).
+So in this case, this is actually the EXPECTED behavior. So what we can do in order to be able to use the hpp middleware but STILL get this result,
+that we expect to have some duplicated fields in some cases, we can whitelist some parameters.
+Into the hpp() , we can pass an object and in there specify the whitelist and whitelist is an array of properties for which we actually allow duplicates in the
+query string.
+Now try the request with multiple duration fields in query string again.
+
+Also don't forget to use the Bearer Token in get all tours route in postman.
+It might seem weird to manually put all the field names in whitelist and later we might have to do the same thing for the other resources and that will then make that
+whitelist even bigger and of course, we could do some complex stuff in order to get these field names from the model itself, but once more,
+we want to keep it simple.
+
+This was authentication, authorization and security section.*/
+
 
 

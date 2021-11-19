@@ -2,8 +2,12 @@
 
 // const fs = require('fs');
 const express = require('express');
-
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
@@ -13,19 +17,44 @@ const globalErrorHandler = require('./controllers/errorController');
 
 const app = express();
 
-//1) Middlewares
+//1) GLOBAL Middlewares
+// Set security HTTP headers
+app.use(helmet());
 
+// Development logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Limit requests from same API(IP??? API is wrong here)
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many requests from this IP, please try again in an hour'
+});
+app.use('/api', limiter);
+
+// Body parser(reading data from the body (and put it) into req.body)
 /* express.json() returns a function and that function always would added to middleware stack.
 We use express.json() middleware in order to parse the data from body on req object. But in past, we have to use bodyParser.json()
 But in the last version, we don't have to use bodyParser.json() and instead we can use express.json()   */
-app.use(express.json());
+app.use(express.json({limit: '10kb'}));
 
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Data sanitization against XSS(cross site scripting) attacks
+app.use(xss());
+
+// Prevent parameter pollution
+app.use(hpp({
+  whitelist: ['duration', 'ratingsQuantity', 'ratingsAverage', 'maxGroupSize', 'difficulty', 'price']
+}));
+
+// Serving static files:
 app.use(express.static(`${__dirname}/public`));
 
+// Test middleware
 /* We could name any of these args anything else, but the order of them matter.
 In next arg, express passes the next function as the third arg into this middleware function and basically all of the middleware functions.*/
 app.use((req, res, next) => {
