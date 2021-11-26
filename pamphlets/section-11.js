@@ -200,11 +200,89 @@ For example when I need to query movies and actors always together? or, are ther
 That kind of questions is what your data model will be based on. In general, always favor embedding unless there is a good
 reason not to embed, especially on one to a few and one to many relationships.
 
-- A 1:ton or a MANY:MANY relationship is usually a good reason to reference instead of embedding.
+- A 1:TON or a MANY:MANY relationship is usually a good reason to reference instead of embedding.
 - Also favor referencing when data is updated a lot and if you need to frequently access a dataset on it's own.
 - Use embedding when data is mostly read but rarely updated and when two datasets being intrinsically together.
 - Don't allow arrays to grow indefinitely. Therefore, if you need to normalize, use child referencing for 1:MANY relationships and parent referencing for 1:TON
 relationships.
 - Use two-way referencing for MANY:MANY relationships.*/
 /* 150-3. Designing Our Data Model:
+We learned a theory about data modeling and now let's use that theory to design the data model of our natours app and this is the most difficult part of building
+an app.
+
+The natours data model:
+Let's start by all the data sets that we need in our app. Starting with tours and we already have this one implemented. Then we need some users and again we already
+have a users collection in our db. So tours and users are two completely separate datasets and so we have them normalized and of course they're not gonna be
+embedded.
+Next we're gonna have reviews and also locations. Because most tours have a number of different locations and so that again is tet another dataset and finally,
+we're gonna have bookings, but a little bit more about why that is, in a second.
+
+users and reviews:
+We have all these different datasets, not let's model the relationships that exist between them and I'm gonna start with the relationship between users and reviews and
+this relationship is clearly a one-to-many relationship. Because one user can write multiple reviews, but one review can ONLY belong to one user and the parent
+in this relationship is clearly the users and the child, the reviews. Because again, it's the part, so the users in this case, who can be related to many reviews, but
+one review can only be related to one user.
+
+I chose to model this relationship using parent referencing and that's because a user can write a lot of reviews and also because we might need to query
+only for the reviews on their own. So the data access pattern is really crucial to take into consideration in this particular relationship.
+Now about the kind of referencing that we're gonna use, it is parent referencing. So the review keeping a reference of the user, so keeping an id, basically and that
+is, as you already know, because we do not want to allow a race to grow indefinitely and that might be the case if a user writes tons and tons of reviews.
+Also it's nice to have the review knowing who actually wrote it and so having the user id right on the review, will allow us to do just that.
+
+tours and reviews:
+Now let's look at the relationship between tours and reviews and this one is similar. Again, it's a one-to-many relationship, where one tour can have multiple
+reviews but one review can only be about one tour. So that's the way it makes sense and so we're gonna model it in the exact same way as the user-reviews relationship.
+So again parent referencing, so that in the end, the reviews end up with a tour id and a user id and so then, once we query for reviews, we always know exactly.
+
+tours and locations:
+Each tour is gonna have a couple of locations. For example the park camper will stop in three or four national parks and so each of these national parks, is gonna be
+one location and so each tour will have a few locations. Now following that example, one of these national parks might also be part of one of the other tours and so
+this relationship is a few-to-few relationship and we called this relationships many-to-many before, but we still can also call them few-to-few or a ton ton a ton and
+so I called them few-to-few , because each tour is only gonna have three, four locations, but not really like 100 and again, each of the locations can also
+be part of another tour. Now, this could be a good example for implementing two-way referencing, so basically noramalizing the locations
+into it's own dataset. But instead, I'm actually gonna denoramlize the locations, so to embed them into the tours and that's for multiple reasons:
+1) First, because there only so few locations.
+2) Also we will not really gonna access the locations on their own
+3) Finally, these locations are intrinsically related to the tours. Because really without locations, there couldn't be any tours. So these datasets belong closely
+together and so I chose to embed locations into tours and not create yet another collection for these.
+So we will have one collection for tours, one for users and for reviews. But not for locations, again, because these will be embedded into the tours.
+
+tours and users:
+Next up, there's also a relationship between the tours and the users and that's because we're gonna have tour guides in the tours and these tour guides will actually be
+users. So rememeber how we gave users a role in our mongoose schema? and the possibilities there, contained the guide and lead guide and so there's gonna be a
+relationship between these types of users and the tours. Now this relationship is again a few-to-few relationship. Because one tour can have only a few users, so a few
+tour guides, but at the same time, each tour guide can also be guiding a few tours and so again, there's a many-to-many relationship here,
+which I simply called here few-to-few. Now about modeling this relationship, we could do it in two ways: We could use referencing or embedding and I'm gonna show you
+how to implement both child referencing and embedding using mongoose thorughout this section and the argument for embedding, is that in this case,
+we could then have all the information about each tour containing the information about tour guides, right on each tour document. But on the other hand,
+that would then create some extra information in the database. Because we will still need to have the users as a separate collection, because we need to access them
+all the time for user authentication and authorization and all that stuff.
+Important: So usually, users are always an entity on their own in each database.
+But we could still embed some of the users into the tours. So when a user is a tour guide, for a specific tour, we could then copy all this data
+into the tour document. But also we would then have to update the user on the tour, each time that the underlying user itself changes. So let's say
+that the role of a user changes from guide to lead guide and in that case, we would then have to go to the tour and also update that role information
+right there on the embedded data and so that's not ideal and so we're actually also gonna then implement child referencing and so with that,
+we can still keep basically the information about the tour guides on the users, but simply in a referenced form. So basically keeping the _ids there, which are
+then gonna point to the users. and of course, we could also use two-way referencing, so also keeping an _id of the tour right on the user, but I think that's a bit
+too much for this kind of small example. Because not all users will need an _id of the tour, because not all users are tour guides and so this relationship here is a
+bit tricky to model, but I believe that in the end, child referencing is gonna be the best way to go. But still, I'm gonna also show you embedding, because I think
+that's also crucial to look at.
+
+Next up, bookings and a new booking will be created, each time that a user purchases a tour. So this is still kind of a relationship between users and tours, because
+again, it's a USER who is gonna buy a tour, but we also want to store some data about that relationship itself. So in this case about the purchase itself in our
+database. For example the price, or the date when the purchase happened or sth like that and so in cases like this, it's a good idea to create an extra dataset which in
+this case is the bookings and so of course there will be a relationship between tours and bookings and also users and bookings and again, because the booking
+connects tours with users, but kind of with an intermediate step. One tour can have many bookings, but one booking can only belong to one tour and the same thing with
+users. So one user can book many tours, but one booking can only belong to one of the users and so of course we have a one-to-many relationship in both cases and
+also in both cases, we're gonna use parent referencing and that means that on each booking, we're gonna keep an _id of both the tour that was purchased and also
+of the user who purchased the tour and so in this case, I'm doing it this way, because I don't want to pollute the tour data with information about who actually
+bought the tour. It wouldn't be really relevant to the tour data itself and the same thing with users. So we also don't want to pollute the users object
+with all of the bookings that they did and so instead, again, we're gonna create like an intermidate object or an intermediate dataset that's going to stand between
+users and tours, whenever they create a new purchase.
+
+This was our data model.
+Look at the <natours data model> slide.
+
+Now we want to model the data using the mongoose library.*/
+/* 151-4. Modelling Locations (Geospatial Data):
  */
