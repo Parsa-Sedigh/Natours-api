@@ -137,6 +137,15 @@ exports.getTour = catchAsync(async (req, res, next) => {
   //         message: 'Invalid data sent.'
   //     });
   // }
+
+  // Tour.findOne({_id: req.params.id});
+
+  // We're doing this in a query middleware:
+  // const tour = await Tour.findById(req.params.id).populate({
+  //   path: 'guides',
+  //   select: '-__v -passwordChangedAt'
+  // });
+
   const tour = await Tour.findById(req.params.id);
   if (!tour) {
     return next(new AppError('No tour found with that ID.', 404));

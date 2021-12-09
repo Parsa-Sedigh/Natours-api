@@ -41,8 +41,8 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
-    // passwordChangedAt: req.body.passwordChangedAt, // we have to add this, but in code of tutor, this isn't there
-    // role: req.body.role // TODO: Is this a security issue?
+    passwordChangedAt: req.body.passwordChangedAt, // we have to add this, but in code of tutor, this isn't there
+    role: req.body.role // TODO: Is this a security issue?
   });
 
   // const token = signToken(newUser._id);

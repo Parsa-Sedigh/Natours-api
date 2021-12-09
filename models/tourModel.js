@@ -3,6 +3,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
+const User = require('./userModel');
 
 const tourSchema = new mongoose.Schema(
   {
@@ -92,6 +93,39 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point']
+      },
+      coordinates: [Number],
+      address: String,
+      description: String
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point']
+        },
+        coordinates: [Number],
+        address: String,
+        description: String,
+        day: Number
+      }
+    ],
+    // for embedding users into tour documents:
+    // guides: Array
+
+    // for referencing user ids into tour documents:
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User'
+      }
+    ]
   },
   {
     toJSON: { virtuals: true },
@@ -110,13 +144,29 @@ tourSchema.pre('save', function (next) {
   next();
 });
 
-/* This post() is not a post request. It means we define a middleware after the save event. How I find that out? Well because
- * we are using post() method on a schema not on route(). */
-tourSchema.post('save', function (doc, next) {
+tourSchema.pre(/^find/, function(next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt'
+  });
+
   next();
 });
 
-/* Query middlewares
+/* This post() is not a post request. It means we define a middleware after the save event. How I find that out? Well because
+we are using post() method on a schema not on route(). */
+tourSchema.post('save', function (docs, next) {
+  next();
+});
+
+/* this pre save middleware is for embedding the users into tours in modeling section. This pre save middleware is responsible for embedding the users into tours, */
+// tourSchema.pre('save', async function(next) {
+//   const guidesPromises = this.guides.map(async id => await User.findById(id));
+//   this.guides = await Promise.all(guidesPromises);
+//   next();
+// });
+
+/* Query middlewares:
 * tourSchema.pre('find', function (next) {
   this.find({ secretTour: { $ne: true } });
   next();

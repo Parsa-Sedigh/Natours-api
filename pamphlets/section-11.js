@@ -277,7 +277,7 @@ users. So one user can book many tours, but one booking can only belong to one o
 also in both cases, we're gonna use parent referencing and that means that on each booking, we're gonna keep an _id of both the tour that was purchased and also
 of the user who purchased the tour and so in this case, I'm doing it this way, because I don't want to pollute the tour data with information about who actually
 bought the tour. It wouldn't be really relevant to the tour data itself and the same thing with users. So we also don't want to pollute the users object
-with all of the bookings that they did and so instead, again, we're gonna create like an intermidate object or an intermediate dataset that's going to stand between
+with all of the bookings that they did and so instead, again, we're gonna create like an intermediate object or an intermediate dataset that's going to stand between
 users and tours, whenever they create a new purchase.
 
 This was our data model.
@@ -285,4 +285,210 @@ Look at the <natours data model> slide.
 
 Now we want to model the data using the mongoose library.*/
 /* 151-4. Modelling Locations (Geospatial Data):
+We're gonna look at geospatial data in mongodb.
+Remember that our location data will be embedded into the tours and so we're gonna declare everything that is related to locations, in our tour model.
+
+Mongodb supports geospatial data out of the box and geospatial data is data that describes places on earth using longitude and latitude coordinates.
+So we can describe simple points, or we can also describe more complex geometries, like lines or even polygons or even multi-polygons. So really everything is
+possible with geospatial data in mongodb.
+
+Mongodb uses a special data format called GeoJSON in order to specify geospatial data.
+
+The object that we specify for startLocation field, this time, is not for the schema type options as we have to for example for
+secretTour field. So the object we specify for secretTour is for the schema type options, but now, the object we specify for startLocation, is REALLY an embedded object,
+so inside of that object we can specify a couple of properties and in order for that object to be recognized as geospatial JSON, we need the type and the
+coordinates properties.
+Important: So we want type and coordinates and now, each of these two sub-fields is then gonna get it's own schema type options.
+So there it's a bit nested. So we have the type schema type options and we also need schema type options for coordinates, just like we have in for example the
+createdAt field, with the difference that the type and coordinates fields are sub-fields.
+
+We can specify multiple geometries in mongodb and the default one is always 'Point', but we can also specify polygons or lines or other geometries like that.
+But for startLocation, it should be Point and so let's actually make that the ony possible option by specifying the enum property which is an array of all the
+possible options that that field can take and in this case we only want it to be 'Point'.
+
+We specified [Number] for coordinates field, which means that we expect an array of numbers and this array is the coordinates of the point with the longtitude first
+and only second, the latitude and so that's a bit counterintuitive, because usually it works the other way around, but in GeoJson, that's just how it works.
+So if you were to go, for example to google maps in order to get your coordinates, then you will see first the latitude and then the longitude.
+
+The latitude is the horizontal position measured in degrees starting from the equator.
+The equator is zero degrees and in north pole, it's 90degrees and then the longitude, is just the same thing but vertically.
+So it's the position starting from a meridian.
+
+We also want to specify a property for the address and a description of that startLocation.
+
+Learn: In order to specify geospatial data with mongodb, we need to create a new OBJECT, such as we did with startLocation field and that object then needs to have
+ at least two field names: coordinates which is of type an array of numbers and then the type field which should be of type string and should be either Point or
+ some other of those other geometries.
+We can add some more fields to this geospatial object such as we did with startLocation, that has address and description fields.
+
+Remember we said we were gonna embed all the locations into the tour documents, but right now, the startLocation is not really a document itself. It's really
+just an object describing a certain point on earth. But in order to really create new documents and then embed them into another document,
+we actually need to create an array. So it's similar to what we already have there, but it needs to be an array and that's what we're gonna do with
+our locations field.
+So the locations field should be an array and in that array is where I'm gonna specify the object such as I did it before in startLocation. So now it's quite the same
+as before.
+So the type for geospatial data needs to be string and the default needs to be 'Point' and then, it cannot be anything but 'Point'. So enum: ['Point'].
+Again, we need coordinates as an array of numbers.
+The `day` field will be the day of the tour, in which people will go to this location.
+
+Now if we wanted to make it simpler, we could delete the startLocation all together and then simply define the first location as the startLocation and set it to
+day number zero. But I decided it's nice to also have the startLocation as a separate field.
+
+So this is how you create embedded documents. Remember we always need to use that array that we used for locations field as it's value and so by specifying
+an array of objects, this will then create brand new documents inside of the parent document, which is in this case, the tour.
+
+Now in order to create some locations, I'm going to import all our original data. So instead of creating new tours,
+I will delete the ones we have and then import the complete data. So in dev-data folder, remember that before we imported tours-simple.json , but we also have
+tours.json and that then actually has the locations and startLocation.
+
+The objects inside the locations array, each one gets it's own _id and so those really are documents and not just simple objects.
+
+So go to import-dev-data.js and replace fs.readFileSync(`${__dirname}/tour-simple.json`, 'utf-8') with fs.readFileSync(`${__dirname}/tour.json`, 'utf-8') .
+
+Now remember we need first to delete and then to import. So in console, run: node ./dev-data/data/import-dev-data.js --delete
+and then run but with the --import option.
+Remember to run your server in background to do these.
+
+In each step, you can check the tours collection in compass to ensure everything worked fine.
+
+In locations array, we have objects that each has it's ObjectId as the value for it's _id field and so again, this is proof that we have now created,
+embedded, or de-normalized datasets.
+Important: So datasets that have a really close relationship with the tours data and so that's why we chose to really make it part
+ of the tours instead of creating it's own collection(so just for locations).
+
+We will use this a bit later in this section, once we start to create some special geospatial queries and with geospatial queries, we can do amazing stuff, like
+finding locations that are closest to certain points, or find all locations inside a certain radius or a certain sphere.
+
+This was how we can create embedded datasets.*/
+/* 152-5. Modelling Tour Guides Embedding:
+We said that we could either embed or reference the tour guide data. In this vid, we're gonna look at how we could implement embedding
+tour guide documents into a tour document. So we're gonna embed user docs into tour docs and then in the next video, we will see
+how we can reference users instead of embedding.
+
+The idea here is that when creating a new tour document, the user will simply add an array of user ids and we will then get the corresponding user docs, based on those
+ids and add them to our tour documents. So in other words, we embed them into our tour.
+So guids field will be of type Array.
+
+In postman and in create new tour req, we specify an array of _ids(user ids, like the ones we have in get all users req) for guide property and from the get all users
+route, then add it to guides array in `create new tour` req.
+
+This is how we're gonna create a new tour with two guides and once we then save that tour(we're creating a tour!), we will then, behind the scenes,
+retrieve the two user documents corresponding to those _ids that we put in the guides array property and in our model file, the best place of doing that,
+is a pre-save middleware. So that will happen automatically behind the scenes, each time that a new tour is saved.
+In the function we pass to pre save middleware as the second arg, we get this.guides as an input and remember this is gonna be an array of all the user _ids
+and so we will loop through them using a map() and then in each iteration, get the user document for the current _id .
+The elements inside this.guides is _ids of users.
+
+Important: The function we pass to map() would be an async function, but this causes a problem. Because the map() method will assign the result of each iteration
+ to the new element in the guides array and now we have an async function passed to map() and as you know, that returns a promise and so right now, the
+ guides array is basically an array full of promises.
+So let's call the resulting array, guidesPromises instead of guides and so we now need to run all of these promises, basically at the same time. So we can use
+Promise.all() . We assigned the reuslt of await Promise.all() to this.guides, so we override that simple array of _ids with an array of user docs.
+
+We need to use Promise.all() because the result of all of that function that we passed to map() , is a promise, so that guidesPromises is gonna be an array full of
+promises, which we then run by awaiting Promise.all() .
+
+Let's test this, by creating a new tour with multiple _ids in it's guides field.
+
+Now in db, the guides array has multiple complete guide documents(users that are now guides of that created tour) and not just an array of _ids.
+
+So this is how we could implement embedding for this tour guides example.
+
+Now the code that we wrote in the new pre save middleware, of course only works for creating new docs, not for updating them. So now, we would have to go
+ahead and implement this same logic also for updates. However the tutor is not gonna do that, because remember from the video where we modeled our data, that there
+are actually some drawbacks of embedding this data in this case. For example, imagine that a tour guide updates his email address, or they change their role
+from guide to lead guide. Each time one of these changes would happen, then you'd have to check if a tour has that user as a guide, and if so, then update the tour as well
+and that's really a lot of work and we're not gonna go in that direction.
+
+In this particular situation, we will instead of embedding, use referencing and we talked about the reasons behind it before.
+*/
+/* 153-6. Modelling Tour Guides Child Referencing
+We embedded users into tours in the last video and also talked about the drawbacks of that approach in our specific situation and in this vid,
+let's connect tours and users not by embedding but instead by a reference and to start, comment the pre save middleware that we wrote in last vid.
+That pre save middleware is responsible for performing the embedding.
+
+Now in guides field, the idea is that tours and users will always remain completely separate entities in our database. So all we save on a certain tour document,
+is the ids of the users that are the tour guides for that specific tour. Then, when we query the tour, we want to automatically get access to the tour guides., but again,
+without them being actually saved on the tour document itself and that exactly is referencing.
+Now let's implement referencing using mongoose.
+
+In the guides field, specify an array, so just like before with the locations and so that again means that those will be some sub-documents, so embedded docs.
+
+With mongoose.Schema.ObjectId , we expect the type of each of the elements in the guides array to be a mongodb id.
+
+We have to put the type inside an object, just like any other schema type definition, because that's all this really is.
+After type property, we need to specify the reference and that is where the magic happens behind the scenes, because there, now we say that the reference should be
+'User'.
+This is how we establish references between different data sets in mongoose and for this, we actually do not even need to have the user to be imported into that document.
+So you can comment out the const User = require('./userModel'); line(we had that for the previous lecture but we can comment it out, because what we just did
+there(ref: 'User') is still gonna work).
+
+Let's now create a new tour(you can delete the last created test tour with the delete tour route and then create that again).
+
+Now create a new tour and just like before, all we pass into the guides property of request body is an array of _ids ,
+but this time, we specified that an ObjectId is exactly what we expect(the ids we pass to guides must be of type ObjectId, but behind the scenes,
+it's also referenced to the user). When we now create that tour, it will only contain those _ids that we specified and not the user corresponding to the _ids.
+
+In the next vid, we will take care of displaying the user data in the output using a process called `populating`.*/
+/* 154-7. Populating Tour Guides:
+Let's now use a process called populate, in order to get access to the referenced tour guides, whenever we query for a certain tour.
+In the last vid, we created a reference to the user, in the guides field in our tour model and now we're gonna use populate, in order to
+replace the fields that we referenced with the actual related data and the result of that, will look as if the data has always been embedded, when in fact, as we know,
+it is in a completely different collection.
+
+The populate process always happens in a query.
+In tour controller and in getTour function and in there, Tour.findById(req.params.id); is where we build our query and now, all we need to do, is to add
+the populate to the query. So call .populate() and then pass the name of the field which we want to populate.
+If you think about it, the name populate, makes sense. Because we want to populate, so basically to fill up the field called guides in our model.
+Again, that guides field only contains the reference and with populate9) , we're then gonna fill it up with the actual data and again, only in the query and not in the
+actual database.
+
+Now let's take a look at result. Now the guides field in output, contains the full user documents and not only their _ids, but in db, only their _id is stored.
+So the elements in guides array that we had in the guides array, have now been populated with the actual data.
+
+But currently in get all tours route, you see the guides array still has the values that are ACTUALLY in the database(only the _ids).
+
+Note: In populate() , we replace the ids with the actual data. But in get all tours route that step doesn't happen, because we didn't implement the populate()
+in the get all tours route handler.
+
+A trick that we can do with the populate function, which is to actually also just select the certain fields. For example we're not interested in that _v property that
+we have in results and also not in passwordChangedAt field. So that's not the kind of data that we want about our tour guides. For that, in populate() ,
+we can instead of just passing in the string, we can create an object of options which the path property is the name of the field we want to replace and then
+as usual, we can use select property and then a minus with the field names in select property.
+So instead of:
+const tour = await Tour.findById(req.params.id).populate('guides');
+we say:
+const tour = await Tour.findById(req.params.id).populate({
+  path: 'guides',
+  select: '-__v -passwordChangedAt'
+});
+
+Now those fields are not shown in the result when getting a tour, so we only get the data that we're interested in.
+
+So the populate() is a fundamental tool for working with data in mongoose and especially of course when there are relationships between data,
+
+Behind the scenes, using populate() will still actually create a new query and so this might affect your performance. Of course if you only do it once or twice
+and in a kind of small app, then that small hit on performance is no big deal at all. But in a huge app, with tons of populate()s all over the place,
+then that might indeed have some kind of effect. Really it makes sense, because how else would mongoose be able to get data about tours and users at the same time?
+It NEEDS to create a new query basically in order to be able to create this connection.
+Currently, this don't work when we use get all the tours route, so there we still simply get the _ids of the tour guides and not the referenced user data.
+One solution would basically be to copy the code we have in getTour, and paste it in getAllTours route handler, but duplicate code is never a good idea.
+The better way is query middleware. So go to tourModel and write a pre middleware that will run when it's gonna work with everything that starts with 'find'.
+Important: We do this in query middleware, because this is the kind of middleware that is going to run each time there is a query.
+
+We called populate() on `this` keyword in the query middleware, because remember that in query middleware, `this` always points to the current query and so now
+all of the queries will then automatically populate the guides field with the referenced user. So get rid of that code in getTour route handler.
+So now we're doing it in the query middleware, instead of doing it in multiple places in the controller.
+Important: So this is a trick in case that you always want to populate all your documents(so we use a query middleware).
+
+We're just testing and put users with the role of not guide or lead-guide as guides in tours.
+
+This is how populating works which is a crucial tool in your toolbax.
+
+Recap: This is a two-step process:
+First you create a reference to another model by using the ref property in the array field that you have which would contain the docs in the output.
+So with ref: '<name of model>', you effectively create the relationship between those two datasets.
+Then in the second step, you populate that field which in this case is the guides field, using the populate() method.
+*/
+/* 155-8. Modelling Reviews Parent Referencing:
  */
