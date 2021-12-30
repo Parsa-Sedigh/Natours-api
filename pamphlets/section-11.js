@@ -483,12 +483,315 @@ Important: So this is a trick in case that you always want to populate all your 
 
 We're just testing and put users with the role of not guide or lead-guide as guides in tours.
 
-This is how populating works which is a crucial tool in your toolbax.
+This is how populating works which is a crucial tool in your toolbox.
 
 Recap: This is a two-step process:
 First you create a reference to another model by using the ref property in the array field that you have which would contain the docs in the output.
 So with ref: '<name of model>', you effectively create the relationship between those two datasets.
-Then in the second step, you populate that field which in this case is the guides field, using the populate() method.
-*/
+Then in the second step, you populate that field which in this case is the guides field, using the populate() method.*/
 /* 155-8. Modelling Reviews Parent Referencing:
+Let's continue to translate the data model that we established, at the beginning of the section, into some actual code and so this time, we're gonna implement the
+reviews model.
+The first step is to create a new file in the models folder and call it reviewModel.js .
+In that model, we want the text for the review, a rating, createdAt, a reference to the tour that that review belongs to and also to the user
+who wrote that review. So basically two parent references there.
+
+The rating field would be between 1 and 5, so min is 1 and max is 5.
+The min and max properties are validators that work only for numbers.
+
+Now let's create the model and export it. So: const review = mongoose.model(<model name>, <schema>);
+
+Then export the model by using module.exports .
+
+Now comes the reference part: A review of course needs to belong to a tour and it also needs an author. So that's again what we specified
+in our data modeling lecture. We were gonna implement parent referencing in this case. Because both the tour and the user are in a sense the parents of that
+data set(review data set) and we decided to do it this way, because we don't want potentially huge arrays in the parent elements. So we should not design our
+app, thinking that there will only be a few reviews, only to then come back to it after some time and find out that our assumptions were wrong and now
+we need to rebuild our entire data model.
+Important: So in many situations, when we do not really know how much our arrays will grow, then it's just best to opt for parent
+ referencing and that's exactly what we're doing here, when we're referencing tour and user.
+So now, create a field called `tour` and do according to source code.
+Now each review document now knows exactly what tour it belongs to. While the tour of course, doesn't now initially what reviews and how many reviews there are, but that
+is a problem that we will solve a bit later.
+Next, when there is a review, we not only want to know what tour it belongs to, but also who wrote this review.
+So create a field called user.
+We make it required, because a review really cannot work without an author.
+
+Let's add some options to the schema, where we make it so that virtual properties also show up in json and object outputs(we did that before in tour schema).
+Those options are:
+{
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+}
+and all this does is to make sure that when we have a virtual property, so a field that is not stored in the database, but calculated using some other value, we want
+that to also show up whenever there is an output.
+
+In the next video, we will use the schema in order to create some new reviews.*/
+/* 156-9. Creating and Getting Reviews:
+We're gonna continue implementing the reviews resource and this time by implementing an endpoint for getting all reviews and also for creating new reviews.
+Create reviewController.js .
+
+We're building a lot of duplicate code. Because for example the current code in getAllReviews looks exactly the same as it looks for the users and for the tours,
+we're gonna fix this.
+
+When we say: await Review.create(req.body) in createReview, we create a new doc with all the data coming in from the body and if there are any fields on the
+body that are not in the review schema, then they will be ignored and so that's why it's safe to do it like this, when creating a new resource.
+
+201 status code is for 'created'.
+
+Now create a new route file named reviewRoutes.js . There, create a router by using express.Router() .
+There, when we say: router.route('/') , it's basically route of the reviews, because remember how in the next step we're going to mount
+that router on '/api/v1/reviews' . After exporting the router from reviewRoutes.js , go to app.js and there, we mount the new router on a new path which is
+'/api/v1/reviews'. So again, that new reviewsRouter is a middleware that we mount upon that path*('/api/v1/reviews'). So whenever there is a request with a url that
+starts like '/api/v1/reviews' , then that reviewsRouter middleware function will be called and so that is then our router, and in there, we have just '/' as route(so
+just the root basically), will then be that '/api/v1/reviews', so just like we did it before with the other two resources.
+
+We only want the authenticated users to be able to POST reviews and also only users that are actually regular users, so not administrators and also not tour guides.
+
+The protect middleware will make it so that we protect that route to only be accessed by users who are authenticated and then, in the next step, we say that we want
+to restrict that route to only users with the role of 'user'.
+
+Recap:
+First off, we have a model which allow us to create new documents. Then we have our controller functions defined in our controller to get all reviews and ... , then
+we used those controller functions or handler functions to create some new routes, for example we created a route for gettung reviewsd and for posting reviews
+and just like before, we did this in a mini sub-application which is just for reviews and so that's why we created our new router which then we imported into our
+main app(app.js) and mounted it on /api/v1/reviews url where we want to access everything related to reviews.
+
+Now test the reviews resource routes.
+For creating a review, use an _id of a tour that you currently have, also we want the _id of the user posting the review and we can get that
+from 'get all users' route. Now keep in mind that this user who is writing a review for a tour, needs to be logged in and so a bit later,
+we will then automatically get the user id from the user that's already logged in. Remember we can do that because the protect middleware will put the user on the
+request object, but for now, I wanted to keep it simple and so with the current implementation, we actually NEED to provide the user's id as well. But still,
+we need to log in as a regular user, because we protected this route for creating a review.
+So now login with the user that you want to create a review as him, in postman.
+
+Note: If a user is no longer active(his active property is set to false), he doesn't show up in results, but it's email can not be taken yet by another user.
+
+Now in Authorization tab of the new request for creating a review, choose "Bearer Token".
+
+We don't need to pass the token to server in Authorization tab of get all reviews request.
+
+Now in response of get all reviews, we only see the user's id and the tour's id. How do we make it so that we actually see the user anad the tour data in response,
+instead of simply the _ids?
+We need to use the populate() , in the next video.*/
+/* 157-10. Populating Reviews:
+Let's populate the reviews with both the user and the tour data and so just like we did on the tour, let's now make it so, that both the tour and the user
+will be automatically populated each time there is a query for a review.
+
+When you want to populate two fields, you need to call populate() twice, so once for each of the fields.
+
+In reviewModel, implement a pre-find middleware and we do that on the schema and we use a regex to match strings which start with 'find' and this is going to
+work for find, findOne and all the other findOne.. methods that are available in mongoose. There, we need to call this.populate() on the current query.
+We passed the options object to .populate() there, because I only want to select a couple of fields and not the entire tour and also not the entire user.
+By specifying `path: 'tour'`, it means that the tour field which has the exact same name, is then going to be the one that's populated based on a tour model, well because
+that's what we specfied in the definition of that field, which we have: ref: 'Tour', so the reference is to a model called Tour and it's in that collection where
+mongoose is then going to look for documents with the id that we specified.
+So we want the tour, but then we only want the tour name and nothing else, so pass this to populate():
+{path: 'tour', select: 'name'}.
+
+If we want to populate MULTIPLE fields, we need to call populate() again. For example, with the first populate() , the query is populated with the tours and now
+we need to populate it again, this time, with the user.
+
+We didn't select the email of user in that second populate(), because let's say that someone hits the api to get all the reviews, but then we don't want to
+leak all the details about the users posting these reviews to the client. So no one should really be able to know the private data about the reviewers, like
+emails and ... . So again, we only leak or in other words, we only send relevant data about the user, and in this case, it's the name and the photo.
+
+If we now hit our get all reviews endpoint, the tour and the user should be populated instead of us just seeing the _ids there.
+
+Currently we do not see the photo property in the response, because we never specified any photo for any of our users yet.
+
+Keep in mind that this(using populate() twice) is gonna add some extra queries and in this case, it's actually two queries. Because behind the scenes,
+mongoose will actually have to query both the tours and also the users in order to find the matching document. If you look at the Time in postman, you can
+see how much it took like 260ms. If you comment the pre find middleware that we just wrote in reviewModel, you can get for example 157ms and if you now again put
+that code back, you get a little bit longer.*/
+/* 158-11. Virtual Populate Tours and Reviews:
+Let's continue with a new and pretty advanced mongoose feature called 'virtual populate'. At this point, we have populated the reviews with the tour
+and the user in that pre find middleware in reviewModel and so right now, when we query for reviews, we get access to that information, however, that still
+leaves one problem unsolved. How are we going to access reviews on the tours? So the other way around? Let's say that I query for a specific tour and then,
+how will I get access to all the reviews for that tour? and this problem arises here because we did parent referencing on the reviews. So basically having the reviews
+pointing to the tours and not the tours pointing to the reviews and so as we said in the beginnning of the section, in this case, the parent does not
+really know about it's children and so in this example, the tour does not know about it's reviews and sometimes that's okay, but in this case, we actually want the tour
+to know about all the reviews that it's got.
+Now in order to solve this, with what we know at this point, we could have two solutions:
+1) Manually query for reviews each time that we query for tours. But it would be a bit cumbersome doing it manually like this.
+2) To also do child referencing on the tours. So keep an array of all the review _ids on each tour document. Then, all we would have to do is to populate that
+array, but, we actually already ruled out doing this right in the beginning, because we do not want to store that array of review _ids, that could then grow
+indefinitely in our database and that's exactly why we picked parent referencing in the first place.
+
+However there is a great solution for this and that's because mongoose actually offers us a very nice solution for this problem with a pretty advanced feature
+called 'virtual populate'.
+With virtual populate, we can actually populate the tour with reviews. So in other words, we can get access to all the reviews for a certain tour, BUT, without
+keeping this array of _ids on the tour. So think of virtual populate like a way of keeping that array of review _ids on a tour, but without actually persisting
+it to the database and so that then solves the problem that we have with child referencing. So it's a bit like virtual fields, but with populate().
+
+What I describe would be in theory, to have, on our tour model, we would add a field called `reviews`(and connect it with 'review'):
+reviews: {
+  type: mongoose.Schema.ObjectId,
+  ref: 'Review'
+}
+So the above field would be how we would implement child referencing. So the tour, referencing reviews. But again, we do not want to do it and instead,
+we're going to implement virtual populate.
+
+For this, on tourSchema, call .virtual() (so just like virtual field), then we type in the name of virtual field and let's call this virtual field, `reviews` and then
+pass in an object of some options and the first option is the name of the model that we want to reference and so that works just like with the normal referencing and
+in this case, that model name is Review and now, we need to specify the name of the fields, in order to connect the two datasets and this is for tutor, the most
+complicated part of implementing virtual populate.
+There, we need to specify two fields: The foreign field and the local field.
+Important: ForeignField is the name of the field in the other model, in this case, in the Review model, where the reference to the current model is stored and that is
+ in this case, the tour field.
+So again, in our Review model, we have a field called tour and that is where the _id of the tour is being stored and so that's why to the foreignField, we specify that
+name of that field in order to connect those two models and now we need to do the same for the current model. So we need to say where that _id is actually
+stored here, in that current Tour model, so use the localField option.
+So again, the localField which in this case is `_id`(the field in the local model), is called `tour` in the foreign model(Review model).
+
+This is how we connect those two models together.
+
+Now, with this setup, we can use populate() just like we did before and what we want to do now, is to go ahead and populate() the tour when twe only
+get one single tour, so in postman, it is the request of 'Get Tour'.
+So now when we get a tour, we now want to populate the reviews and currently, it's set to null, but the virtual field is actually already there with the reviews,
+but it's null at this point because we didn't yet populate it and again, we ONLY want to populate it, in the Get one tour and not in Get All tours. Because
+that would be a bit too much information to send down to the client when they get all the tours.
+Also when we're getting all the tours, that's usually to build like an overview page and in that case, we usually do not need to access all the reviews.
+We only need that when we are really displaying just one tour, so it makes sense to only do this populate on 'Get One Tour'.
+Now let's do that populate right in the tourController where we have getTour handler and pass the name of the field that we want to populate to populate() .
+
+Now test the get one tour route.
+So we get the related reviews and it means that our virtual populate is working.
+
+Now you might start to see that this is creating kind of a problem. Because this is basically creating a chain of populates and that's not ideal at all.
+So we have the tour being populated with reviews, but then the reviews ALSO get populated with the `tour` again and also with the `user` and then also the
+`tour` is also getting populated with the `guides`, which in the result that I get, the guides was an empty array(because there were no guides
+for that tour, but if there were, then we would have yet another populate()), but you get the idea!
+So here we have a chain of three populate()s and so for performance, it's not ideal, especially with the tour. Because we have the tour populated with reviews
+(which makes a reviews property that has an array as value in the tour)and then in the reviews, we again have the data about the tour(look at the tour property
+in each object in review array) and so that doesn't make sense at all.
+So it's kind of a mess now.
+
+The solution that we're gonna use, is to turn off populating the reviews with the tours. So we do not need that tour data on each review.
+In this case, that's a good solution, but of course, again in your case, it will always depend on how your application works in your specific case.
+But in this app, it's more logical to really have the reviews avaialable on tours and it's not that crucial having the tour available on the review.
+So let's turn that populate off in reviewModel and in it's pre find middleware and now we should only see the _id of the tour in each object in reviews property.
+With this of course we still do parent referencing. So we still keep a reference to the tours, but we simply do not populate() it and again, because
+we don't always need that data right there.
+
+RECAP: We started doing only parent referencing on the review, but that made it so that on the tours, we had no access to it's corresponding reviews and the easiest
+fix for that would be to also do child referencing on the tours, but the problem with that would be that we do not actually want to keep an array of all the
+child documents on the parent document. Because again, we don't want to allow arrays to grow indefinitely. So instead of doing that,
+we implemented virtual populates like the one we defined with tourSchema.virtual('review', {...}); and that allows us to do the exact same thing, so keeping a
+reference to all the child documents on the parent document, but without actually PERSISTING that information to the database and so then,
+after having this virtual populate set up, all we needed to do is to use populate() just like we did before, with the real references(we did this in getTour handler)
+and then finally we also turned off one of the populates that we had on the review in it's pre find middleware in reviewSchema, where we populated the tour id, because
+that was creating kind of an inefficient chain of populates and that's of course sth that we don't want.
+
+Now we want to create nested routes.*/
+/* 159-12. Implementing Simple Nested Routes:
+How in practice, we want to create a new review?
+Up until this point, when creating new reviews, we always manually passed the tour _id and the user _id into the request body and then created the review
+from there and that's ok during development, but of course, that's not how a review will be created in the real world.
+In the real world, the user _id should ideally come from the currently logged in user and the tour _id should come from the current tour and that should ideally
+be encoded right in the route, so in the url. So when submitting a POST request for a new review, we will want to submit that to a url like:
+'/tour/:tourId/reviews'.
+So now just like this, we have the tour id in the url and the user id will come from the currently logged in user and so what we see in that previous url, is now
+a so-called nested route and they make a lot of sense when there is a clear parent-child relationshiop between resources and that is clearly the case here.
+Important: So reviews is clearly a child of tours and so this nested route means to access the reviews resource on the tours resource when we have:
+ '/tour/:tourId/reviews' and in the same way, we will also want to access reviews from a certain tour in the same way, so let's say a GET req for:
+ '/tour/:tourId/reviews' and this would ideally get us all the reviews for this tour with that tourId.
+
+We could go even further and also specify the id of the review:  '/tour/:tourId/reviews/:reviewId'. In this case, we would get review with the :reviewId on the tour with
+:tourId.
+This is what nested routes are all about and this is a way more easier way of reading and understanding how the api works for our api users.
+It's way easier than messing around with query strings and all that stuff like that. Also it really shows how there is this clear relationship between
+these resources. So again, reviews and tours in this case.
+
+Let's implement this. Since the route starts with tours, it will be redirected to our tour router and so we're going to have to imeplement this functionality,
+at least for now, in the tour router, even though that seems a bit counter-intuitive, since we're in fact, dealing with reviews. But again, for now, let's imeplement
+it like this. Go to tourRoutes and since, we're going to use reviews there, import reviewController.
+
+We want to have a route like: /tour/:tourId/reviews .
+Now that /tour is where we MOUNTED that router and so we do not have to repeat it in tourRoutes.js .
+Since we're dealing with different resources in that path, it's better to name :id as :tourId .
+Again, it is a bit weird and counter-intuitive to call the reviewController in the tourRoutes, but again, for now, we need to do it like this, because the route
+starts with 'tour' and so it's the router in tourRoutes that will get activated, but we're gonna fix that.
+
+Now in reviewController's createReview, we say if there is no req.body.tour , so basically if we didn't specify the tourId and the body then,
+we want to define that as the one coming from the url.
+
+Note: We get req.user from protect middleware.
+
+With this, we make it so that the user can still specify manually the tour and the user id.
+So what we're doing there is to define them when they are not in req.body .
+
+Now if you login as a user that has a role as user, create a review for a tour and as the result, we get the final review with both the tour and the user
+correctly defined.
+
+Create a new folder for this new request in postman and call it Tours/Reviews and name that req: Create New Review On Tour.
+
+Currently we have defined a review route in the tour router and we're gonna fix that.*/
+/* 160-13. Nested Routes with Express:
+We're gonna use a special advanced express feature.
+In last vid, we implemented a nested POST route which is:
+router.route('/:tourId/reviews').post(...) in tourRoutes file.
+and this means that the review route is kind of WITHIN the tour route and again, because reviews belong to tours in a sense and this is a very common
+thing to do in API design.
+Now the problem with this implementation is that it is a bit messy and it's because we put a route fir creating a review in the tour router, simply because a
+route starts with /tour , so that's a bit confusing and what's also confusing is that we have sth very similar to this
+router.route('/:tourId/reviews').post(authController.protect, authController.restrictTo('user'), reviewController.createReview) which is
+in tourRoutes.js , also in our reviewRoutes and that thing is: ....post(authController.protect, authController.restrictTo('user'), reviewController.createReview) .
+So when we create a new review without the nested route, that piece of code inside .post() is exactly the same in both places. So besides this being confusing,
+we also have duplicate code which we would have to maintain in two separate places in case we wanted to change anything and that's a bad practice.
+
+Let's fix this using an advanced express feature called mergeParams.
+First off remove that code from tourRoutes which doesn't really belong to the tour router. Then import the reviewRouter into the tourRouter!
+Now we say: router.use('/:tourId/reviews', reviewRouter) which it means: this tour router should use the review router in case it ever encounters a
+route like '/:tourId/reviews'.
+
+A router itself is really just a middleware and so we can use the use() method on it and then say that for that specific route like in this case,
+'/:tourId/reviews', we want to use the reviewRouter instead and so this is again mounting a router.
+In app.js we did exactly this, we used .use() on app , then a route and then the router.
+So whenever it finds a url like '/:tourId/reviews' on tourRouter, use the reviewRouter.
+So now, if we have a url like '/:tourId/reviews' , it will start by getting into the tourRouter which we specified it in app.js (because it starts
+with /tours, so it's rerouted into the tourRouter), then when it reaches the tourRouter, it will match the '/:tourId/reviews' url and then it will
+again be routed into the reviewRouter and like this, we have the tourRouter and the reviewRouter nicely separated and decoupled from one another.
+
+But now there's still one piece missing, because right now, that reviewRouter that we specified in router.use() in tourRoutes, doesn't get access tp
+that :tourId parameter which is in url and so now we need to enable the reviewRouter to get access to that parameter as well and this is where magical
+mergeParams.
+In reviewRoutes.js and in express.Router() we can specify some options and we set mergeParams to true.
+
+Why we need this option there?
+It's because by default, each router only has access to the parameters of their specific routes. But there, in the '/' route in reviewRoutes, for POST,
+there's no :tourId, but we still want to get access to the :tourId that was in that other router which is tourRouter,
+Learn: so in order to get access to that parameter in that OTHER ROUTER, we need to merge the parameters and that's what mergeParams: true does.
+
+Important: Now, no matter if we get a route like: POST /tour/:tourId/review or /reviews, it will now all end up in that .post() handler in
+ reviewRoutes, so to createReview handler function.
+and again that works because all of the routes starting with /tour/:tourId pattern will be redirected to the review router, because of
+router.use('/:tourId/reviews', reviewRouter) line of code in tourRoutes. So with that code, we redirect it to review router and there it will match the '/' route.
+And thanks to mergeParams: true, we then get access to that :tourId which comes from the other router before.
+
+Now create a new review and then check the tour to see if it gets this new review.
+
+Now we're gonna adapt the handler function for getting all the reviews for a specific tour, in the next video.
+
+Note: Start the route with a slash, so '/:tourId/reviews' not ':tourId/reviews'.*/
+/* 161-14. Adding a Nested GET Endpoint:
+We created a nested POST endpoint in order to create new reviews on a certain tour. So let's now build upon that and also create a nested
+GET endpoint.
+
+Currently, getAllReviews handler only gets an array of all the reviews in the review collection.
+Now a common use case for our API, might be to get an array of all the reviews of one particular tour, so very similar to the createReview.
+So similar to POST '/tour/:tourId/reviews', but except with GET.
+
+Now all we need to do in order to implement this, is to do some changes to getAllReviews handler function. Because right now thanks to the mergeParams: true
+and that kind of redirecting with router.use() in tourRoutes, that getAllReviews handler function will now automatically get called, whenever there is a
+GET request for a URL like: /tour/:tourId/reviews and will also get access to the :tourId thanks to mergeParams: true .
+The changes:
+check if there is a tourId in params and if there is one, then we're only gonna search for reviews where the tour is equal to that tourId.
+So if there is a req.params.tourId, then we want to create a filter object which we will then later use in that find() and so then only the reviews
+where the tour matches the id, are going to be found.
+
+If it's our regular api call without nested route, well then that filter will simply be an empty object and so then we're gonna find ALL the reviews.
+
+Now let's test this. You should get all the reviews that are present on that PARTICULAR tour.*/
+/* 162-15. Building Handler Factory Functions Delete:
  */
