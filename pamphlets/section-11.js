@@ -794,4 +794,192 @@ If it's our regular api call without nested route, well then that filter will si
 
 Now let's test this. You should get all the reviews that are present on that PARTICULAR tour.*/
 /* 162-15. Building Handler Factory Functions Delete:
+We're gonna build a handler factory function in order to delete review documents, but also documents from all the other collections, all with one simple
+function.
+
+Adding very similar handlers to all of our controllers, will create a lot of duplicate code. Because all those update handlers, or all those delete handlers
+or all those create handlers, they really all just look basically the same. Also imagine that we wanted to change like some http status code or status message.
+Then we would have to go into each and every controller and then change all the handlers in there and so, instead of manually writing all those handlers,
+why not create a factory function that's gonna return those handlers for us?
+Learn: A factory function is a function that returns another function
+and in this case, our handler function. So for deleting, for creating, for updating and also for reading resources.
+
+Copy the deleteTour handler as a template for us to follow. Then create a new file in controllers called handlerFactory and I'm doing this in the controllers folder,
+because the functions that we're gonna write there, will return controllers, so it makes a lot of sense to put them in controllers folder.
+
+The goal is to create a function which will then return a function that looks like the deleteTour, but not only for the tour, but for every
+single model that we have in our application and that we might have in the future.
+So that function needs to be prepared for that and what that means is that inside the facotry function, we will pass in the model.
+Let's call our factory function `deleteOne` and it's called like this, again, because that function is not only going to work to delete tours,
+but also to delete other documents.
+
+This works because of javascript closures which is just a fancy way of saying that that inner function(like the function we return in a factory function),
+will get access to the variables of the outer function, even after the outer has already returned.
+
+Calling factory.deleteOne() will then return another function which will then sit there and wait until it is finally called as soon as we hit the
+corresponding route and now let's try exactly that in postman and delete a tour.
+
+Only the administrator should later be able to delete users, because remember that when the user deletes himself, then they will NOT actually get
+deleted, but only `active` will be set to false. But the administrator on the other hand, is really gonna be able to delete the user effectively
+from the database, we're gonna be worry about the permission stuff a bit later.
+
+If you try to delete a user that is no longer there, we should get an error which says: No document found with that id.
+
+Each and every single endpoint that we're implementing, I'm also adding it into postman, because a bit later, we will then be able
+to create some API documentation based on all of them that we have saved in postman and that's yet another handy feature of that application.
+
+Delete user route is just for administration but delete current user is for the currently logged in user, so very different.
+
+This was a factory function only for deleting and only for deleting. Next, we're gonna implement factory function for updating and for creating docs.*/
+/* 166-16. Factory Functions Update and Create:
+Let's create some factories for getting documents and let's start with getOne.
+This one is a bit trickier, because we have a populate() in the getTour() handler which is different from all the other get handlers in the other
+resources.
+Important: But this is not a problem. Because we will simply allow ourselves to PASS IN a populate options object into our getOne function.
+So instead of simply passing in the model, we will also have populate options.
+
+Copy a normal get one entity handler function from getTour.
+
+In that handler, we will first create the query and then if there is the populate options object, we will then add that to the query and then by the end,
+await for that query.
+
+So this logic that we have in getOne factory function with NOT awaiting the query RIGHT AWAY, but instead just saving it into a variable, so that
+we can then, in the next step, manipulate it. We actually already did this kind of stuff before when we were building our API features.
+So ONLY IN THE END, when the entire query is ready, we will then await it and store it somewhere in a variable.
+
+The `path` property in populate() is the field that we want to populate and then we can also specify `select` which with this, we can specify which of
+the fields we actually want to get.
+
+Now create a getAll factory function. Copy the original code from getAllTours because it is the one that is really complete, because it has all those api features.
+
+The getAllReviews handler has some lines of code that all the other getAll handlers do not have and what we're gonna do there is to copy that code which doesn't
+exist in other getAll handlers, into our handler factory as well. That's kind of a hack, because we really only need that code for getAllReviews and not other
+getAll handlers, but to get around this, would be a bit too much work and once more, we want to keep it simple.
+Also we need to pass that filter variable in getAll factory, to find() .
+
+Let's now add a route for update a user in postman.
+
+Now create the createOne factory function and you can get it's base code from createTour function. Then replace the code for createTour with the
+createOne factory function.
+
+So now our code in the controllers is now getting clean, but we're not gonna be able to replace ALL of the functions that we have in controllers with
+factories, because otherwise, we wouldn't even need those controller files. Right? We could then simply create those handlers on the fly in the router files and
+so we could basically skip that entire step of the controller file. But again, we still need it, because we have some other stuff in the controller functions,
+for example in getTourStats and getMonthlyPlan and ... , so it makes sense to keep those files.
+
+For the users resource, we do not need the createOne factory, because for creating new users, we already have the signup function and we can't replace that
+with a factory, because it really is different from that generic factory.
+
+In createReview handler, we have some code that is not in more generic createOne factory function. So how can we fix that?
+We can create a middleware that is going to run before the createReview and that also makes it a bit more decoupled. So that additional code is gonna be
+in it's own function and really decoupled from createReview code, because it doesn't have much to do with creating the review, it simply sets some data.
+So create the setTourUserIds middleware and the responsibility of it, is to set tour and user ids. Or in other words, we set those ids on the body and then
+move straight to the next middleware, where then the review eis actually created.
+
+Now we need to create factory functions for getting one and getting all documents of a certain resource.*/
+/* 167-18. Adding a me Endpoint:
+It's a good practice to implement a /me endpoint in any api. So an endpoint where a user can retrieve his own data.
+It's gonna be sth very similar to updateMe and deleteMe endpoints that we already have(the handlers for those endpoints actually).
+Create getMe handler function.
+
+We want to use .getOne factory function, because otherwise it would be similar code. The only problem with this one is that getOne() uses the id coming from
+the parameter in order to get the requested doc. But what we want to do now, is to get the document based on the current user id. So the id comging from the
+currently logged in user and so that way, we don't have to pass in any id as a url parameter.
+So how can we do that?
+All we do, is a very simple middleware which in there, we say: req.params.id(which is the one that getOne is gonna use) and set it to req.user.id and then
+we will then add that middleware before calling getOne() .
+
+Now in userRoutes, add a new route for get me and we named that url, '/me' and for this url, we need to first be logged in, so use authController.protect which will
+add the user object to the current req object, which will then allow us to read the id from that user.
+Then put that user id into the req.params.id . So basically faking that the id is actually coming from the url, so place userController.getMe middleware and
+then finally place userController.getUser .
+
+Now test it by creating a new request in postman and we need to set the Type in Authorization tab of postman, to Bearer Token.
+
+With this route, we get the data about ourselves.
+
+So again, you saw the great power of middleware, where it was so easy to implement the getMe middleware, so that then, after that, we can use our
+simple getUser handler.*/
+/* 168-19. Adding Missing Authentication and Authorization:
+We need to fix some of the authentication and authorization in all our resources and we're gonna start with our tour resource and since all the
+authentication and authorization stuff is always defined on the route declarations, we're gonna work on the tourRoutes.js file.
+
+That tours api that we have, is what we want to expose to the world. For example we might want to allow other travel sites to embed our tours
+into their own website and so that's what this api is basically for and so we will not have any authorization on 'get tour' requests. So get rid of
+authController.protect from the getAllTours route.
+Again: On getting all the tours route, right now we have it protected and so only the authenticated users can use that. But again, that doesn't make sense, because
+you want to expose that part of the API to everyone, so get rid of that.
+
+However, the actions of creating or editing tours, we only want to allow lead guides and administrators to perform these actions. So of course, no normal users and
+also no normal guides, so just admins and lead guides. So use the restrictTo() on createTour handler.
+
+Next, we want to do the same with editing a tour route.
+
+Everything else, even getting just one single tour, is of course free to everyone and the same goes for getting the top tours route and also getting the
+tour statistics route.
+Now about get monthly plan, we also might want to restrict that only for example to everyone except normal users.
+
+Signing up, logging in, forget password and reset password are open to everyone. For none of these, you need to be logged in. But you need to be logged in,
+so to be authenticated, to update your password, to get your own information, to update or delete your own account and ... . So we don't want the
+public to get information about all the users. We also don't want anyone to delete users or to update users and so none of these operations should be
+free for the public. So for those not-public routes, you will always have to be authenticated.
+
+We could go ahead and add that protect middleware to all of those routes, but we can do better than that. In order to do that,
+keep in mind that that protect function is just a middleware and also remember, learn: that middleware runs always in sequence.
+Now the router in userRoutes that we created in the beginning, is kind of like a mini application and so just like with the regular app,
+we can use middleware on that router variable as well. So we can do sth like:
+router.use(authController.protect);
+Important: and this will protect all the routes that come after that router.use(authController.protect); and again that's because middleware, runs in sequence and
+ so after those 4 middleware functions(/signup, /login, /forgotPassword, /resetPassword/:token)(remember that they are still middleware), the next middleware in
+ the stack is that authController.protect which is used in router.use() and that will then only call the next middleware, if the user is authenticated and the
+ next middleware in this case, is router.patch('/updateMyPassword', ...);
+So all of the routes that come after that router.use(authController.protect);, are now protected, so we can remove authController.protect from all of them.
+
+That's a trick to protect ALL of the routes(which are middlewares) at the same time, simply by using a middleware that comes BEFORE all those other routes.
+
+For example if you move that router.use(authController.protect); before /forgetPassword , you need to be logged in, in order to use forgetPassword route!!! which doesn't
+make sense at all!
+
+It's crucial to mark the routes that need the users to be logged in, in their Authorization tab to use the Bearer Token, because of api documentation that we're
+gonna generate based on the saved routes in postman.
+Note: For get all tours and get a tour reqs, we no longer need any authentication, so remove the Bearer Token in Authorization tab of that req in postman, so set it to
+Inherit auth from parent.
+
+We want no one whose not authenticated, to GET or POST or ... any reviews, so we used router.use(authController.protect); in the beginning, so we removed
+authController.protect from the routes after that router.use(...); .
+
+Now about authorization, only users should be able to POST reviews. No guides and also no administrators.
+Then admins should be able to update or to delete reviews, just like regular users, so that they can then edit or delete their own reviews and
+finally, guides can not add, edit or delete reviews. Since the guides are the ones who are performing the job, so it would be weird if they could POST
+reviews themselves or edit other people's reviews!!!
+
+Guides and lead-guides have nothing to do at all with reviews. All they can do is to really GET reviews, but not changing pr POSTING them at all.
+
+The reqs in Tour/Review folder(the nested routes), need to have authentication, because ultimately it's the review handlers that are called for both of those reqs.
+
+So now the only way of getting access to data about reviews, is to call all of the tours request(at least for people that are not authenticated).
+
+In updateOne factory, the {data: doc} object is called envelope. */
+/* 169-20. Importing Review and User Data:
+In dev-data folder, we already imported all the tours, but we also have a users.json and a reviews.json , so we need to update the import-dev-data.js
+script.
+
+First run: node ./dev-data/data/import-dev-data.js --delete
+to delete everything we have currently. Then take a look at the compass.
+
+Now run: node ./dev-data/data/import-dev-data.js --import
+But now we get an error that says: passwordConfirm: ValidatorError: Please confirm your password and that's because we're creating a new user without
+specifying the passwordConfirm property. The solution to that is to explicitly turn off the validation in this case and for this, we need to
+pass in an object when using Model.create() as the second argument and with validateBeforeSave: false, all of the validation that we do in the model,
+will just be skipped, also another thing that we need to do in the model, is to turn off the password encryption. Because the users that we provide
+ALREADY have an encrypted password. So comment those two pre save middlewares in user model file.
+
+Now delete the data again, so we don't create any duplicates and then run the import command.
+
+Now uncomment those pre save middlewares in userModel.js .
+
+Now in postman, login as the administrator and the password for all of the users is: test1234.
+
+So now we have more real world data.*/
+/* 170-21. Improving Read Performance with Indexes:
  */

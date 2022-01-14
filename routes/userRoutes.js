@@ -12,13 +12,22 @@ requiring these routers, we can import them as their unique names in app.js file
 instead of their unique name, like userRouter or .... */
 const router = express.Router();
 
+
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 router.post('/forgotPassword', authController.forgotPassword);
 router.patch('/resetPassword/:token', authController.resetPassword);
-router.patch('/updateMyPassword', authController.protect, authController.updatePassword);
-router.patch('/updateMe', authController.protect, userController.updateMe);
-router.delete('/deleteMe', authController.protect, userController.deleteMe);
+
+// Protect all routes after this middleware:
+router.use(authController.protect);
+
+router.patch('/updateMyPassword',authController.updatePassword);
+router.patch('/updateMe', userController.updateMe);
+router.delete('/deleteMe', userController.deleteMe);
+router.get('/me', userController.getMe, userController.getUser);
+
+// All of the routes after this middleware, should only be callable by the admin:
+router.use(authController.restrictTo('admin'));
 
 router
   .route('/')
