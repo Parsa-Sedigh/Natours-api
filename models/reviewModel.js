@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Tour = require('./tourModel');
 
 const reviewSchema = new mongoose.Schema({
   review: {
@@ -46,6 +47,63 @@ this.populate({
     });
 
   next();
+});
+
+reviewSchema.statics.calcAverageRatings = async function(tourId) {
+  const stats = await this.aggregate([
+    {
+      $match: {tour: tourId}
+    },
+    {
+      $group: {
+        _id: '$tour',
+        nRating: {$sum: 1},
+        avgRating: {$avg: '$rating'}
+      }
+    }
+  ]);
+
+  console.log('stats is: ', stats);
+
+  if (stats.length > 0) {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsQuantity: stats[0].nRating,
+      ratingsAverage: stats[0].avgRating
+    });
+  } else {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsQuantity: 0,
+      ratingsAverage: 4.5
+    });
+  }
+
+};
+
+// reviewSchema.pre('save', function (next) {
+//   // `this` points to the current review
+//
+//   // this won't work, because Review is not yet defined
+//   // Review.calcAverageRatings(this.tour);
+//
+//   // this.tour points to the tour id field of the current review document
+//   this.constructor.calcAverageRatings(this.tour);
+//
+//   next();
+// });
+reviewSchema.post('save', function () {
+  this.constructor.calcAverageRatings(this.tour);
+});
+
+// findByIdAndUpdate()
+// findByIdAndDelete()
+reviewSchema.pre(/^findOneAnd/, async function (next) {
+  this.r = await this.findOne();
+  next();
+});
+
+reviewSchema.post(/^findOneAnd/, async function () {
+  //await this.findOne() does NOT Work here, because the query has already executed.
+  await this.r.constructor.calcAverageRatings(this.r.tour);
 });
 
 const review = mongoose.model('Review', reviewSchema);

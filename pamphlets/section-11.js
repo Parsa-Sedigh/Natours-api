@@ -982,4 +982,284 @@ Now in postman, login as the administrator and the password for all of the users
 
 So now we have more real world data.*/
 /* 170-21. Improving Read Performance with Indexes:
- */
+Read performance in mongodb and why sth called indexes are crucial and how we can create them ourselves?
+
+In getAll() of handlerFactory.js , after await features.query, call explain() .
+Now if you send a req like get all tours by saying: /api/v1/tours?price[lt]=1000, you would get a completely different result which in this case would be
+some statistics.
+Look at executionStats property and there, you can see the number of documents that were returned, were 3 for example and so that's exactly the result that we got
+before, so before doing the explain() . But the number of documents that were examined(totalDocsExamined property) is 9(in case of tutor's) and this means
+that mongodb had to examine, so basically to SCAN all of the nine documents, in order to find the correct 3 ones, so the 3 ones that match the query and so that's
+not efficient at all.
+Now of course at this scale, with only 9 docs it makes absolutely no difference, but if we had hundreds of thousands or even millions of docs there,
+then this would significantly affect the read performance of that query.
+
+With indexes, we will be able to kind of solve this problem. We can create indexes on specific fields in a collection. For example mongo automatically creates an
+index on the _id field by default and in compass you can see it by going to the indexes tab of a collection. That _id index is an ordered list
+of all the _ids that get stored somewhere outside of the collection and you can see the size for example 36 kb and that index is useful, because
+whenever docs are queried by the _id , mongodb will search that ordered index instead of searching through the whole collection and look at all the
+documents one by one, which is of course much slower.
+So again, without an index, mongo has to look at each document one by one, but with an index on the field that we are querying for, this process becomes much
+more efficient and we can set our own indexes on fields that we query very often.
+Let's do that with the price field that we just queried for before, because tutor believes that it is one of the most crucial that people will query for.
+
+In tour model and right after the schema declaration, use index() on schema variable and pass it an object with the name of the field and for the value of
+that field, either 1 or -1 and 1 means that we're sorting the price index in an ascending order, while the -1 stands for descending order and there are
+other types of indexes as well, like for text or for geospatial data, but we will see that a bit later.
+
+Note: After writing the code for declaring a new index on a field, send the request multiple times to make sure the index is really set, because sometimes
+it is not set right away.
+
+Now send the req for getting all tours again with explain() and you still see that we still get our number of returned or nReturned at 3, but this time,
+the number of documents that were examined, so that were scanned(totalDocsExamined), were only 3! and so that proves that with this index, we achieved exactly
+what we wanted. So before, we had to scan through all of the 9 documents and now the engine only needs to scan the three documents that are actually also returned and
+again, because their prices are now ordered in that index and so that makes it much easier and faster for the mongodb engine to find them and this is a huge performance
+gain.
+
+Now tutor reloads the collection and even the whole database from the button in top left, but still the new index doesn't appear in indexes tab of compass!
+But that doesn't matter, because we already know that the index is actually working! So it's completely normal that sometimes this takes some time to update.
+
+Now in indexes tab of compass, you can see that the _id index is having a property called unique and unique is also a property that we can give to indexes and
+this is actually the reason why the _ids have always to be unique. So simply because the index of the _id has this unique property. You also noticed that
+there is an index for the name in tours collection, but we didn't create that manually ourselves!
+So why it is there?
+Because in our schema definition, we set the name field to be unique and so what mongoose then does behind the scenes in order to ensure the
+uniqueness of that field, is to create a unique index for it and so because of that, not only the _id , but also the name always have to be unique(in case of tours
+collection).
+
+So when all we ever do is to just query for one single field alone, then a single field index is perfect. Because remember the index that we just set
+before, is called a single field index.
+If we sometimes query for that field, but combined with another one, then it's more efficient to create a compound index. So one with two fields and not just one.
+
+Let's create a query for that just to illustrate it.
+Another field that I think is going to be queried for all the time, is the ratingsAverage. So now send a req with this url(which would send statistics, because of
+explain()):
+{{URL}}/api/v1/tours?price[lt]=1000&ratingsAverage[gte]=4.7
+We got nReturned which is the number of results(the number of docs that are returned, so that match this query) as 2. But we still had to examine 3 docs(totalDocsExamined).
+For fixing this, we're gonna use a compound index.
+So comment the first index that we created and then create a compound one and after that, for sending the request, do it a couple of times instead of once.
+Now in the case of tutor's, only 2 documents were scanned(totalDocsExamined) in order to find the two documents(nReturned property) that we were actually looking for.
+
+This compound index, is also going to work when we query for just one of those two fields individually(price or ratingsAverage).
+Important: So when we create a compound index like this, we do not have to then create one individual for each of the fields as well.
+
+One thing that in the case of tutor's is interesting is that in the top right corner in compasse's indexes tab, you can see the
+total size of indexes which in the case of tutor's is 72kb which is way bigger than the size of all the docs combined in that collection(9 docs in case of tutor's)
+which have total size of 14.4KB.
+So those indexes in that collection that we create to search the documents, take up a lot more space than the docs themselves! But again, that's just because
+we're operating on such a small scale in this example and so that's not really relevant.
+
+How do we decide which field we need to index? and why don't we set indexes on all the fields?
+We kind of used the strategy that I used to set the indexes on the price and on the averageRating. So we need to study the access patterns
+of our app in order to figure out which fields are queried the most and then set the indexes for these fields.
+For example, we're not setting an index on the groupSize, because I don't really believe that many people will query for that parameter and so I don't need to
+create an index there, because we really do not want to overdo it with indexes. So we don't want to blindly set indexes on all the fields and then hope for the best!
+and the reason for that is that each index actually uses resources, so as you can see here with the Total size of indexes.
+Important: And also, each index needs to be updated, each time that the underlying collection is updated.
+So if you have a collection with a high write/read ratio, so a collection that is mostly written to, then it would make absolutely no sense to create an index on
+any field in this collection. Because the cost of always updating the index an keeping it in memory clearly outweighs the benefit of having the index in the first
+place, if we rarely have searches, so have queries, for that collection.
+So in summary, when deciding whether to index a certain field or not, we must kind of balance the frequency of queries using that exact field, with the cost of
+maintaining this index and also with the read/write pattern of the resource. However, just like it is with data modeling,
+there are not really hard rules here.
+
+Whatever you do, please don't just ignore indexing, because even if it's not perfect, it will always have a huge beneift for your app.
+
+Create an index for query slug, because later on, we will want to use the unique slug to query for tours. So meaning that the slug will then probably
+become the most queried field and so it makes all the sense to also have an index for that one.
+
+Most times, the 1 or -1 for index is not that crucial.
+
+If the compass doesn't update the newly created index in it's indexes tab, you can try to connect to the database again through connect>connect to and you can find the
+info for connecting from the most recent ones.
+
+Note: If you HAD an index in the code in the past and then remove that code, the index will remain in database! So it's not enough to remove the index from our code,
+we really need to delete it from the database itself(we had it in the beginning and then we commented it out, but it's still in the db!).
+
+Indexes can make the read performance on dbs better.
+
+Now comment out the explain() from getAll factory.*/
+/* 171-22. Calculating Average Rating on Tours - Part 1:
+Let's calculate averageRatings.
+So storing a summary of a related dataset on the main dataset is a popular technique in data modeling and this technique can be helpful
+in order to prevent constant queries of the related dataset.
+In our app, an example of this technique is to store the averageRatings and the number of ratings on each tour, so that we don't have to query the reviews
+and calculate that average each time that we query for all the tours. For example, that could become useful for a tour overview page in our front-end,
+where we really do not want to display all the reviews, but still want to show a summary of these reviews, like for example the number of ratings and the
+average and actually we already have the fields for that in our tourSchema which are ratingsAverage and ratingsQuantity. But right now, they're only just some
+numbers and of course, they are not the actual average and the number of ratings, because we never really calculated that at any point in our app, but that's
+exactly what we're gonna change in this video.
+So right now, we're gonna calculate the average rating and also the number of ratings of a tour. each time that a new review is added to that tour, or also when a
+review is updated or deleted, because that's exactly the situations when the number or the average might change.
+
+In reviewModel, create a new function which will take in a tour id and calculate the average rating and the number of ratings that exist in our collection for that
+exact tour. Then in the end the function will even update the corresponding tour document, then in order to use that function,
+we will use middleware to call this function each time that there is a new review or one is updated or deleted.
+
+For writing that function, we're gonna write a static method on our schema and that's a feature of mongoose that we hadn't used yet, so we only used instance
+method, which we can call on docs and they are also useful, but this time, we're really gonna use static methods and these can be called on the model directly for
+example like: <model variable>.statics.<name of static method> = function () {}  and this function takes the tour id and that id is for the tour to which the
+current review belongs to.
+
+In order to do the calculation, we will again use the aggregation pipeline.
+Important: We use the aggregate() method on a model variable(on the model itself) which we call directly on the model itself.
+Important: In a static method on a model, the this keyword points to the current model and that's why we can use this.aggregate() inside a static method,
+ because remember we need to call this.aggregate() on the model directly and that's exactly why we're using a static method there in the first place.
+ Because again, `this` now points to the model and we need to call aggregate() always on the model.
+
+Into aggregate() , we need to pass in an array of all the stages that we want in aggregate .
+In aggregate of reviewModel, the first step(stage) should be to select all the reviews that actually belong to the current tour that was passed in as the argument.
+So our first stage is a $match stage and to that $match, we pass our filter object and for that we pass: {tour: tourId}
+and with that, we only select the tour that we actually want to update.
+
+In the next stage, let's calculate the statistics themselves and for that, we use a $group stage and in the $group phase, remember the first
+field that we need to specify is the _id and then the common field that all of the docs have in common that we want to group by, and so that's again
+going to be the 'tour' field, so: '$tour'.
+Important: So with: {$group: {_id: '$tour'}}, we grouped by the tour field.
+
+For example in getTourStat's aggregate pipeline's $group, where we have: _id: {$toUpper: 'difficulty'} , we grouped by the difficulty and so like this,
+we calculate the statistics for easy and statistics for medium and statistics for difficult tours. So in that example, we grouped all the tours
+together by their difficulty.
+But now in reviewModel's static method, we're grouping all the tours together by tour.
+
+When we have: nRating: {$sum: 1}, it means: add 1 for each tour that we have, so each tour that was matched in the previous step or stage(nRating means number of
+ratings). So if there are five review docs for the current tour, then for each of those docs, 1 will get added, so then in the end, the number of ratings or
+nRating will be 5 and again, because of course, we have 5 review docs.
+
+For $avg operator, we specify the name of the field with a $ in the beginning. Remember each review has a rating field and that's where we want to calculate the
+average from.
+
+So number of ratings and average of ratings are exactly what we wanted to calculate in this aggregation.
+
+In a later step, we want to update the tour document with those statistics. But I'm gonna leave that for a bit later, because for now, we need to call
+that static method somewhere, because otherwise the statistics that we calculated in that static method will never get used and we will call it using a middleware
+each time that a new review is created, so create a pre save middleware on reviewSchema.
+
+In a pre save middleware, the `this` keyword points to the document that is currently being saved and so we will want to call the calcAverageRating function
+using this.tour .
+Now how are we going to call this function?
+Remember that that function is available on the model, so like: Review.calcAverageRatings()
+When we have: this.tour in that pre save middleware:
+`this` points to the current review and therefore this.tour is the tour id that we're gonna pass to the calcAverageRatings() .
+So we would write: Review.calcAverageRatings(this.tour);
+
+Now the problem is that at that point when we defined the pre save middleware, the Review variable is not yet defined. Now you might think that the solution would
+be to move that pre save middleware AFTER the Review variable declaration and initialization, but unfortunately that's not gonna work, because just like in express,
+that code(the pre save middleware) runs in the sequence it is declared and so if we were to put that pre save middleware after the Review variable declaration,
+then that reviewSchema would not contain that pre save middleware. Because we would then only be declaring it AFTER the Review model was already created.
+But there is fortunately still a way around this and that is to use: this.constructor in that pre save middleware and `this.constructor` still points to the MODEL inside
+that pre save middleware. WHY?
+Because we know that `this` in a pre save middleware points to the current document and the constructor is the model who created that document.
+So this.constructor stands for the Review I guess(tutor said Tour!).
+
+Now let's test this and for that, create a new tour first. because the other ones that we already have, they have the average and number of ratings
+already calculated and so we want to start from scratch here when testing this out.
+To create the new tour, we need to be logged in as administrators and after creating a new tour, you see some defaults that we set before like
+ratingsAverage set to 4.5 and the ratingsQuantity set to 0.
+
+Now in order to create a new review, we need to be logged in as a regular user, then create a new review on tour, by using this route:
+/api/v1/tours/:id/reviews
+
+Then look at the console and it is sth like: [ { _id: 5c8a1f292f8fb814b56fa184, nRating: 2, avgRating: x } ]
+The next time you create a review for a tour, the result of stats would be: [ { _id: 5c8a1f292f8fb814b56fa184, nRating: 4, avgRating: x } ]
+
+Important: We shouldn't use PRE save middleware and instead post. Because at pre save, the current review is not really in the collection yet and therefore
+ when we then do that $match , it shouldn't be able to then appear in the output, because again at that point in time, it's not really saved into the
+ collection just yet.
+So it's best to use post middleware because at that time, all the docs are already saved in the db and so that's then a great time to do this calculation
+with all the reviews already and then store the result on the tour.
+
+Note: The post middleware does not get access to the next argument which we could use to call the next middleware.
+
+So now, we're correctly calculating the statistics, but they're not yet being persisted to the current tour document.
+Because the tours that we created still have the default values of 4.5 and 0 for avg and number of ratings.
+So now we want to persist the calculated statistics into the tour document.
+
+For doing that, first of all, require the Tour model into the reviewModel file.
+
+Now in calcAverageRatings, we need to find the current tour and then update it.
+
+We didn't store the result of await Tour.findByIdAndUpdate , into a variable, because we don't need to do anything with it.
+
+Now create a new review for a tour.
+Now see the tour that you created a review for it to see average rating and number of ratings for it, by using "get tour" route.
+
+Recap: We started by creating a static method on Review model to create the statistics of the average and number of ratings for the tourId for which the
+current review was created and we created that function as a static method, because we needed to call the aggregate() on the model and in a static method on
+model, the `this` keyword calls exactly to a method(the model?!) and so it's handy in these cases.
+
+So we constructed oru aggregation pipeline, where we selected all the reviews that matched the current tourId and then calculated the statistics for all the
+reviews in the $group stage. Then we saved the statistics to the current tour that a review was created for that tour.
+Then in order to use this static method, we call it after a new review has been created, so a post save middleware and for that, we need to use
+this.constructor, because `this.constructor` points to the current model in a post save middleware.
+
+We also want to update the statistics whenever a review is EDITED or DELETED. Because these actions will of course, also influence the number and the average of
+ratings. However, doing so is a bit more complex. So we do it in next video. */
+/* 172-23. Calculating Average Rating on Tours - Part 2:
+Calculating the review statistics, this time for when a review is updated or deleted and this part is harder because keep in mind that a review
+is updated or deleted using findByIdAndUpdate() , or also findByIdAndDelete() and for these, we actually do not have document middleware, but only
+query middleware and so in the query, we don't have direct access to the document, in order to then do sth similar to:
+this.constructor.calcAverageRatings(this.tour); . Because we need access to the current review, so that from there, we can extract the tour id
+and then calculate the statistics from there. But again, for the findByIdAndUpdate() and also findByIdAndDelete() , we only have query middleware.
+
+But let's see a nice trick to go around this limitation.
+For this, we're gonna implement a pre-middleware for those events(findByIdAndUpdate() , or also findByIdAndDelete()) and we're gonna use a regular expression.
+Important: So write a pre middleware in reviewModel and the regex is /^findOneAnd/ which is gonna work for findOneAndUpdate and findOneAndDelete. Because remember that
+ behind the scenes, findByIdAndUpdate is only just a shorthand for findOneAndUpdate() with the current id. So there, we actually need to use the findOneAndDelete and
+ findOneAndUpdate middleware hooks. So we didn't write a regexp like: /findById.../ , instead we wrote for it's actual meaning(findByIdAndUpdate is just a SHORTHAND,
+ so we wrote for it's actual meaning).
+
+The pre middlewares get the next argument not the post ones.
+
+The goal is to get access to the current review doc, but there(in pre findOneAnd middleware), `this` keyword is the current query.
+Now how are we gonna go around this?
+Important: We can execute the query and then that will give us the document that's currently being processed.
+So in order to do that, we can use findOne() and then we await that query and save it somewhere and we store it in r variable which stands for review.
+
+So basically the trick of going around that in a query middleware, we only have access to the query.
+So again, we need to get access to the document and so we execute that query(this keyword by using findOne() .
+
+Now you can test this by using the update review route. Now you get the updated review. Now of course the rating is still set to 5 at that point,
+because that findOne() really gets the document from the database and so at that point of time, in pre middleware, it still didn't persist any changes
+to the database and so it was 5 before and so now it's still gonna be 5. But that doesn't really matter there, because all we are interested in, is the
+tour field which is the id of tour, because that is what we're gonna need in order to calculate the average ratings.
+
+Now if we were to use the calcAverageRatings() function at this point of time in pre middleware of /^findOneAnd/, then we would calculate the statstics
+using the non-updated data and so that's the exact same reason why up here, we also needed to use post and not pre, because only after the document is already
+saved to the database, it makes sense to then calculate the ratings and so in pre middleware, it's the exact same thing, with the big difference that we
+cannot simply change that pre to post. Because at that point of time(with post), we no longer have access to the query, because the query has already
+executed and so without the query, we cannot save the review document and we can not then run that calcAverageRatings() function.
+
+The solution for this is to now use post and at that point of time, so after the query has already finished and so the review has been updated,
+this is a perfect point in time where we can then call that calcAverageRatings function. But where do we now get the tour id from?
+We're gonna have to use a trick which is to pass data from the pre-middleware to the post-middleware and so instead of saving the result of
+await this.findOne() to a variable, we're gonna save it to this.r . So basically we create a property on `this` and so in the post-middleware,
+we still have access to that and we can say: this.r in that post-middleware and this.r is the review.
+
+Recap: We need sth like: this.constructor in order to call that calcAverageRatings() static method in the post findOneAnd middleware, because
+remember that calcAverageRatings() is a static method and so we need to call it on the model itself. Now where is that model in the case of a
+post findOneAnd middleware?
+It's at this.r which in this case is equivalent to `this` in the post save middleware. So we can use .constructor on the this.r .
+
+We have to do it this way, because at the post findOneAnd middleware, the query was already executed and so we could not do await this.findOne() in post
+findOneAnd middleware.
+
+Now to test this, update a review and change it's rating and the avgRating should change on the tour document too.
+
+So it works great on update, let's also test it with deleting. So delete the test review with delete review route.
+
+Currently, if there are no docs matching that $match stage, then we get back an empty array, so the stats array would be empty and we get an error when
+we say: stats[0].nRatings, so add an if statement and the else statement means that all our reviews are gone and we want to go back to the default.
+
+To test this, create a new review with create a new review for a tour route.
+
+Recap: In order to be able to run calcAverageRatings() static method also on update and delete, we need to use the query middleware
+that mongoose gives us for these situations. So we do not have a handy document middleware which works for those update and delete functions,
+but instead, we need to use the query middleware and in that one, we do not directly have access to the current doc and so we need to go around that
+by using that findOne() in pre middleware of findOneAnd and so retrieving the current document from the db. Then we store it on the current query variable which
+is the `this` keyword(in pre findOneAnd middleware) and by doing that, we then get access to it in the post middleware and it's then only in the post
+middleware where we calculate the statists for reviews and remember we do it this way, because if we did it right in that PRE findOneAnd middleware function,
+then the underlying data would not have been updated at that point, so the calculated statstics would not really be up to date and so that's why
+we used this two-step process.*/
+/* 173-24. Preventing Duplicate Reviews:
+*/
