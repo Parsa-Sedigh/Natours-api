@@ -1,6 +1,7 @@
 "use strict";
 
 // const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -12,13 +13,20 @@ const hpp = require('hpp');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewsRouter = require('./routes/reviewRoutes');
+const viewRouter = require('./routes/viewRoutes');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 
 const app = express();
 
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
+
 //1) GLOBAL Middlewares
+// Serving static files:
+app.use(express.static(path.join(`${__dirname}/public`)));
+
 // Set security HTTP headers
 app.use(helmet());
 
@@ -51,9 +59,6 @@ app.use(xss());
 app.use(hpp({
   whitelist: ['duration', 'ratingsQuantity', 'ratingsAverage', 'maxGroupSize', 'difficulty', 'price']
 }));
-
-// Serving static files:
-app.use(express.static(`${__dirname}/public`));
 
 // Test middleware
 /* We could name any of these args anything else, but the order of them matter.
@@ -90,6 +95,9 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
+app.use('/', viewRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewsRouter);

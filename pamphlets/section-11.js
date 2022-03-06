@@ -1262,4 +1262,174 @@ middleware where we calculate the statists for reviews and remember we do it thi
 then the underlying data would not have been updated at that point, so the calculated statstics would not really be up to date and so that's why
 we used this two-step process.*/
 /* 173-24. Preventing Duplicate Reviews:
-*/
+We're gonna use a trick in order to prevent users from writing multiple reviews for the same tours. So basically preventing duplicate reviews.
+So we(and users) shouldn't create multiple reviews for one tour, so this shouldn't be done from the SAME user.
+So in the real world, each user should only review each tour once, so basically a duplicate review happens when there is a review with the same user and the same tour id.
+The obvious solution is to just use a unique index, however it is not enough to set both these fields to unique and actually that would really be wrong, because that
+would mean that each tour can get only one review and each user can only write one review and obviously that's not what we want.
+What we do need, is them BOTH TOGETHER to be unique. So the combination of user and tour to be always unique and this is easy to acheive with indexes.
+We already created a compound index on the tour before and so now let's do the same on the reviews.
+
+Right after the schema definition(still in the reviewModel file) use the index() on the variable that holds the schema and in this case, setting tour to 1 or
+-1 in index doesn't matter.
+
+With reviewSchema.index({tour: 1, user: 1}, {unique: true}); , each combination of tour and user, has always to be unique.
+
+Now for testing this, it maybe doesn't work right away, it maybe start to work the next day.
+For testing this, create a new review on tour with a user and then if for the second time, with that exact user, you create a new review for that tour,
+then it shouldn't be allowed to work. Just keep in mind that it might still work, because of the issue that I mentioned!
+So sometimes, the indexes doesn't get SET immediately.
+But if it works, it should say: Duplicate key error collection: natours.reviews index: tour_1_user_1
+
+If you don't see the newly created index in compass indexes tab, you can reconnect to database, but maybe it doesn't work still!
+
+So now we will not able to create two reviews coming from the same user. In other words, one user cannot write multiple reviews for the same tour.
+
+Sometimes, the ratingsAverage becomes a floating number with too many decimal numbers and we could fix this in the frontend for example when we
+request that data from the api and then display it, we could on the frontend then do a rounding, but we want to do it right on the backend, so that
+the end user already gets this final rounded value and for doing that, there's a small new feature in mongoose. For that, go to tourModel and to ratingsAverage field
+and we can use a setter function with the `set` property that has a function as value and that function will be run each time
+that a new value is set for that field and there, we usually specify a callback function which receives the current value.
+
+The problem with Math.round() is that it rounds values to integers, so for example if the value is 4.666666 it would then round it to 5 and that's not what we want,
+we want it to be 4.7 and so we're gonna use a trick which is multiply it by 10 which would be 46.6666 which when is rounded, would be 47 and then we divide it
+by 10 again.
+
+In this case, the setter function is gonna re-run each time that there is a new value for the ratingsAverage field.*/
+/* 174-25. Geospatial Queries Finding Tours Within Radius:
+We're gonna look at the geospatial queries in order to implement a feature which is to provide a search functionality for tours within a certain
+distance of a specified point.
+Let's say you live in a certain point and wanted to know which tours start a certain distance from you like 250 miles , because you don't want to
+drive further than that in order to start your tour experience.
+
+In tour router, create a nice route and put it before the general routes there, called /tours-within/:distance/center/:latlng
+:latlng is the point where you live , in other words, :latlng is the coordinates of the place where you are.
+Let's say you live in Los Angeles and wanted to find all the tours within a distance of 300 miles. So :distance would be 300 and :latlng would be
+the coordinates of where you live.
+
+Also provide the option of specifying the unit, so if either the distance is in kilometers or in miles.
+
+This way of specifying the url like /center/:latlng or /unit/:unit and of course we could make it so that the user should specify all of these options
+using a query string, but this way it looks way cleaner and it's also kind of a standard way of specifying URLs which contain a lot of options.
+
+So we could also specify the url with query strings like:
+/tours-within?distance=233&center=34.111745,-118.113491&unit=mi
+
+Now let's write the geospatial query itself, a geospatial query works quite similar to a regular query.
+Now about the filter object we pass to .find() : remember we want to query for start location, because the startLocation field is what holds
+the geospatial point, where each tour starts and so that's exactly what we're searching for and for the value of that, we now use a geospatial operator
+called $geoWithin and this operator finds docs within a certain geometry and that geometry is what we need to define as a next step.
+So we want to find docs, but where do we want to find these docs?
+Well, we want to find them inside of a sphere that starts at latlng variable and which has a radius of the distance variable.
+
+The $centerSphere operator takes an array of the coordinates and of the radius.
+Important: For coordinates, we need yet another array and remember that we FIRST need to always define the longitude and THEN latitude which is a bit
+ counterintuitive, because usually coordinate pairs are always specified with the latitude first and the longitude second, but in geoJSON?, it for some
+ reason works the other way around.
+
+So that was the center of sphere, now we need to specify it's radius.
+Now we do not pass in the distance, but instead, mongodb expects a radius in a special unit called radians.
+
+The radius is the distance that we want to have as the radius, but converted to a special unit called radians and in order to get the radians,
+we need to divide our distance by the radius of the earth.
+Now we need to take into consideration our units here, because of course the radius of the earth is different in miles and in kilometers. So we can create a
+ternary operator.
+
+distance variable is our original radius.
+
+The radius of earth in miles is 3963.2 and in kilometers, it's 6378.1 .
+
+So this conversion is necessary because mongodb expects the radius of our sphere to be in radians and we get radians by dividing the distance
+by the radius of the earth.
+
+In order to be able to do geospatial queries, we need to first attribute an index to the field where the geospatial data that we 're searching for, is stored.
+So in this case, we need to add an index to startLocation field.
+So do that in tourModel by using .index() on variable that holds the schema, but we're not going to set it to 1 or -1, because this time it is a different
+index that we need.
+For geospatial data, the startLocation index needs to be a 2D sphere index, if the data describes real points on a earth-like sphere, or instead,
+we can also use a 2D index if we're using just fictional points on a simple two dimensional plane. Now in this case of course, we're talking about real
+points on the earth's surface and so we're gonna use a 2D sphere index.
+So with '2dsphere' index, we're telling mongodb that startLocation field should be indexed to a 2d sphere. So an earhlike sphere where all our data are
+located.
+
+Now test the route.
+
+You can stop server npm script and run the debugger and you can set a breakpoint at the line where you have: if (!lat || !lng) {
+Because at that point, we will have all our variables defined and so we can then take a look at their values.
+Of course we could have done that with a simple console.log() , but in some situation where we have a lot of stuff going on, it's good to use the debugger.
+Now send the request again to trigger the breakpoint.
+
+Now the result of that endpoint tells us that there are those tours that are in that distance that we specified in the distance of url.
+
+But how can we really know if that it's true?
+We can use compass for this and go to schema tab of tours collection and then click on analyze schema and there we have a summary for all of our fields.
+
+Now in startLocation field there, normally you would see a map there, but right now there is no map because we have a document right now which doesn't have
+a startLocation. So in order for this to work properly, we need to get rid of that document and then go to schema tab and click on Analyze button again.
+Then on the map, put the mouse cursor on where you want and then hold shift and then drag to draw a circle and if those points are INSIDE that circle, they will
+become orange and then you can hit analyze button to return the result of drawing that circle and you can see the fields of results there.
+So you can test the results that you got in postman, with the schema tab of compass.
+
+We can see all of the locations on the map by using an empty filter in that tab and go to locations field there.
+
+The bounding GeoJSON geometry is that sphere that we defined in our code.
+
+With $near operator, we don't need to do the conversion to radians and with this operator, we can specify a minimum distance and so with this, we could
+for example exclude tours that are only 50 miles away from our starting point.
+
+So with this geospatial query that we defined, we found docs that are located within a certain distance of our starting point, but what if we wnated to know the
+exact distance of all the tours TO that starting point?
+We're gonna calculate this in the next video.*/
+/* 175-26. Geospatial Aggregation Calculating Distances:
+In last vid, we searched for tour docs within a certain distance from a certain point using geospatial queries.
+In this video, let's use geospatial aggregation in order to calculate distances to all the tours from a certain point.
+
+Create a route called /distances/:latlng/unit/:unit , so the data that we need is the latitude and longitude of the point where user currently is, and also we allow
+the user to specify the unit.
+So as you can see in the url of this route, this time, we do not need the distance parameter as we had it in the tours-within route, because we're not
+gonna be searching from a certain radius. We're really gonna calculate the distance from a certain point to all the tours that we have in our collection.
+
+Just like before, in order to do calculations, we always use the aggregation pipeline and it is called on the model itself.
+
+For geospatial aggregation, there's only one single stage and that's called {$geoNear: ...}. So this is the only geospatial pipeline stage that exists and it
+always needs to be the first one in the pipeline. So $geoNear alwasy needs to be the first stage.
+
+$geoNear requires that at least one of our fields contains a geospatial index and we already did that before with the startLocation field which already has
+the 2dsphere geospatial index on it and since we're using the startLocation in order to calculate the distances, that's then perfect.
+Learn: If there's only one field with a geospatial index, then the $geoNEar stage will automatically use that index in order to perform the calculation.
+ But if you have multiple fields with geospatial indexes, then you need to use the keys parameter in order to define the field that you want
+ to use for calculations.
+So again, in this case, we only have one field and so automatically that startLocation field is gonna be used for doing these calculations.
+
+What do we need to pass to $geoNear?
+First we need to specify the near property in the object that we pass to $geoNear and `near` is the point from which to calculate the distances. So all the distances
+will be calculated between that point that we define in near property and then all the startLocations and so that near point is of course the point that
+we pass into that getDistances handler, with latitude and longitude.
+
+We need to specify the near point as geoJSON, where we need to specify the type as 'Point' and then specify the coordinates property and as always, the first
+coordinate is the longitude in coordinates property and we multiplied both of them by 1 to convert it to numbers.
+
+So the near property is the first mandatory field of the object we pass to $geoNear and the second one is the distanceField property and it is the name
+of the field that will be created and where all the calculated distances will be stored.
+That's all the fields that are mandatory in the $geoNear stage.
+
+Of course we can add other stages after the $geoNear stage.
+
+If you test this route, you will get this error: $geoNear is only valid as the first stage in a pipeline.
+Now if you look at the code you might think that actually our $geoNear stage is currently the first stage of our pipeline!!!
+There's nothing before it, so why do we get this error?
+This has sth to do with a piece of code that we wrote a long time ago and in the aggregation middleware and remember that what that did is to always add
+that $match stage before all the other stages and with that log there, our pipeline now looks like:
+[
+  { '$match': { secretTour: [Object] } },
+  { '$geoNear': { near: [Object], distanceField: 'distance' } }
+]
+and so it makes sense that we get this error.
+
+Now we could change that middleware and say that if $geoNEar is the first operator in the pipeline, then do not do that unshift() , but that's too much
+work for this use case and all I'm gonna do is to get rid of that middleware.*/
+/* 176-27. Creating API Documentation Using Postman:
+The api is finished.
+Click on publish docs on the collection. Then a browser window opens. We didn't want to use any environment anyway, because that would then replace our
+environment variables with their real values and we don't want that. For example we used the env variable on the password, so that then later
+in the documentation, it's not really visible. So we really want to use no environment.*/

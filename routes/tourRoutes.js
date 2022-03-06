@@ -19,6 +19,14 @@ router
 router.route('/tour-stats').get(tourController.getTourStats);
 router.route('/monthly-plan/:year').get(authController.protect, authController.restrictTo('admin', 'lead-guide', 'guide'), tourController.getMonthlyPlan);
 
+// with query strings: /tours-within?distance=233&center=-40,45&unit=mi
+// with parameters: /tours-within/233/center/-40,45/unit/mi
+router.route('/tours-within/:distance/center/:latlng/unit/:unit')
+  .get(tourController.getToursWithin);
+
+router.route('/distances/:latlng/unit/:unit')
+  .get(tourController.getDistances);
+
 router
   .route('/')
   // .get(authController.protect, tourController.getAllTours)

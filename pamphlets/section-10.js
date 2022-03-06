@@ -237,7 +237,7 @@ There are many authentication methods. But the one we're gonna use is a modern a
 Json web tokens are a stateless solution for authentication. So there is no need to store any session state on the server, which of
 course is perfect for restful APIs. Because remember, restful APIs should always be stateless.
 The most widely used alternative to authentication with JWTs is to just store the user's login state on the server using sessions.
-But that not follows the principle that says: restful APIs should be stateless an d that's why we're opting for a solution like JWTs.
+But that not follows the principle that says: restful APIs should be stateless and that's why we're opting for a solution like JWTs.
 
 Let's take a look at how authentication works with json web tokens.
 Let's assume that we already have a registered user in the db.
@@ -792,7 +792,7 @@ Imagine the act of deleting a tour from our DB. Not every user should of course 
 So we basically need to authorize only certain TYPES of users, to perform certain actions and that's exactly what authorization is.
 Authorization is verifying if a certain user has the rights to interact with a certain resource. So again, with authorization, we basically check
 if a certain user is allowed to access a certain resource, even if he is logged in. So not all logged in users will be able to perform
-the same actions in our API and this is a very common scenario that should be implmented in each and every web application usually.
+the same actions in our API and this is a very common scenario that should be implemented in each and every web application usually.
 
 So we're gonna build another middleware function in authController, this time to restrict certain routes. For example, for deleting tours(we're gonna
 restrict the route for deleting a tour, to certain types of users or certain user roles).
