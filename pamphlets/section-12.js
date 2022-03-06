@@ -61,4 +61,6 @@ So create viewRoutes.js .
 After adding some routes to router in viewRoutes, we need to mount that router to our app.
 
 175-9. Building the Tour Overview - Part 1:
+
+176-10. Building the Tour Overview - Part 2:
 */
