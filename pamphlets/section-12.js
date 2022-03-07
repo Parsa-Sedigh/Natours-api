@@ -63,4 +63,13 @@ After adding some routes to router in viewRoutes, we need to mount that router t
 175-9. Building the Tour Overview - Part 1:
 
 176-10. Building the Tour Overview - Part 2:
+empty piped line: Whenever we need a real space between two inline-block elements, then we need to manually create that space using | , between the elements that
+we want some space between them. Now after that pipe, you need to hit some tabs or spaces, to actually create that empty space.
+So that pipe line basically creates a space for us where we can then create content outside of an element.
+So: |<some tabs or spaces> will create some space.
+
+177-11. Building the Tour Page - Part 1:
+In pug, mixins are reusable pieces of code that we can pass arguments into. So a bit like a function and also it's exactly like mixins in sass.
+
+178-12. Building the Tour Page - Part 2:
 */
