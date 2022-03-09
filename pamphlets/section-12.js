@@ -72,4 +72,32 @@ So: |<some tabs or spaces> will create some space.
 In pug, mixins are reusable pieces of code that we can pass arguments into. So a bit like a function and also it's exactly like mixins in sass.
 
 178-12. Building the Tour Page - Part 2:
+
+179-13. Including a Map with Mapbox - Part 1:
+The mapbox library runs in the frontend.
+The js folder in public folder is the js files that are specific to frontend and we're gonna integrate the files in that js folder in html files to run in the
+client side.
+
+In pug, when we extend a block, then the content inside that, disappears. But don't worry. There's another way of extending blocks
+which will simply add the new content at the end or at the beginning of the block and we can say:
+block append <name of block> . Now whatever we write in that block will then be appended to the content that's already in that block.
+`append`  would add content at the end, `prepend` at the beginning.
+
+Now one of the files in our client side needs some data about location of data of the tour that we're trying to display. How are we gonna do that?
+You might say we can do an AJAX req(a call to our api) and get the data from there, but that's not necessary. Instead, in our tour.pug , we know that
+we ALREADY have all the data about the tour itself and so we can simply put that data in the html file, so that the JS can then read it from there without sending
+a client side request to api. So basically we're gonna expose the location data as a string in the html and our JS will then pick it up from there without
+having to do any API call separately.
+Important: So the trick to eliminate an AJAX req, is to use data attributes on html tags. We named it data-locations .
+ So there's a nice trick in JS where we can specify a data attribute in html and then read that attribute using JS.
+In html data attributes, we cannot have arrays or objects or anything like that and so what we have to do is to convert all of those data types into string
+and that is easy, by using JSON.stringify() .
+
+Learn: Whatever we put into a data attribute like data-locations, will then get stored into the dataset property and in this case, dataset.locations .
+
+Eslint is configured for nodejs and not client side js, so we disabled eslint for mapbox.js .
+
+We shouldn't put the mapbox.js script tag into the <head /> and it should be at the bottom of page.
+
+180-14. Including a Map with Mapbox - Part 2:
 */
