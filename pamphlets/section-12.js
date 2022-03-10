@@ -100,4 +100,41 @@ Eslint is configured for nodejs and not client side js, so we disabled eslint fo
 We shouldn't put the mapbox.js script tag into the <head /> and it should be at the bottom of page.
 
 180-14. Including a Map with Mapbox - Part 2:
+We're using mapbox instead of google maps because google maps requires a credit card.
+
+Use mapbox cdn.
+
+It's good to have one token in mapbox for each project.
+
+In mapbox studio, click on share and then 'use' and then look for the style url(it has to be a url starting with mapbox://).
+
+Mapbox is exactly like mongodb in aspects to first requiring the longitude and then the latitude.
+
+Now we need to put all the locations for a certain tour on the map and then allow the map to figure out automatically which portion of the map it
+should display in order to fit all of these points correctly. So the first thing we need to do is to create a bound variable.*/
+/* 181-15. Building the Login Screen:
+When using catchAsync, we should always specify the next argument(third argument of middleware).
+
+182-16. Logging in Users with Our API - Part 1:
+Learn: By sending a request to login endpoint, our api will send back a cookie, which automatically gets stored in the browser and also automatically gets send back
+ with each subsequence request.
+
+Create login.js .
+
+We're gonna bundle the js frontend files into one big js file. That's better for performance and a better developer experience.
+
+In order to get access to the cookies that are in the request that was made to backend, in express, we need to install a certain middleware which is called
+cookie-parser. Then use it in app.use() near where you use the body parser middleware.
+The body parser middleware parses the data from the body and the other parses the data from cookies and now you can use req.cookies.
+
+We can use the sent cookie from request, in order to protect our routes, so in protect middleware.
+Right now, in protect middleware, we're only reading the json web token from the authorization header and only if it starts with 'Bearer' string. But now,
+we also want to read the json web token from a cookie. So add an else if() block there. So if there was no token in the authorization header,
+then let's take a look at the cookies of request.
+
+So now with this, we're also able to authenticate users based on tokens sent via cookies and not only the authorization header.
+
+For making a route only accessible to users who have a cookie, you can use protect middleware in viewsRoutes.js .
+
+183-17. Logging in Users with Our API - Part 2:
 */
