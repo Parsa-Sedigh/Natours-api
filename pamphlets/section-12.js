@@ -137,4 +137,102 @@ So now with this, we're also able to authenticate users based on tokens sent via
 For making a route only accessible to users who have a cookie, you can use protect middleware in viewsRoutes.js .
 
 183-17. Logging in Users with Our API - Part 2:
+In order to know if the user is logged in or not, we're gonna create a new middleware function.
+Now you might think that our protect middleware also does sth similar and actually it is similar. But the difference is that one only works for
+protected routes. But our new middleware function is going to be running for each and every single request on our rendered website.
+The new middleware is only for rendered pages. So the goal there is not to protect any route and so there will never be an error in this middleware.
+In this new middleware, the token should come from the cookies and not from an authorization header. Because for rendered pages, we will not have the
+token in the header.
+
+So again, for our entire rendered website, the token will always only be sent using the cookie and never the authorization header. That one is only for the api.
+
+In the end of isLoggedIn middleware(in the end means, if the token is verified, if the user still exists and if they didn't change their password), in that case,
+it means that there is a logged in user and then we make that user accessible to our templates and how we're gonna do this?
+We can do res.locals() and put some stuff in there and then our templates will get access to them.
+
+Learn: In a template file, we have access to res.locals , so whatever we put in res.locals, will then be a variable inside of those templates.
+ So it's a little bit like passing data into a template using the render function.
+ So this also provide data to templates:
+ res.locals.<data> = <value>;
+
+We don't need to write: req.user = currentUser; because we will put that currentUser on res.locals .
+
+The conditionals in put are not powerful and so many times we use JS, but in this case, they are enough.
+
+Learn: There are two ways to send data to backend:
+ 1) sending data using an http request(ajax), with fetch or axios or ...
+ 2) directly use an html <form>
+
+184-18. Logging in Users with Our API - Part 3:
+Placing multiple <script> for our frontend js files in the html files is not a good practice. We should only have one big js file which includes
+all the code and for this, we use a module bundler like webpack. But webpack is a pain to set it up. So we can use parcel.
+
+So run: npm i parcel-bundler --save-dev , because it's a development tool, we use --save-dev .
+
+Then add some npm script like watch:js and in the npm script value, we specify what folder it should watch.
+
+Many times, you will have different folders for the development and for the output, but in this case since it's a very simple architecture,
+we're gonna put the bundle file right in the same place at the development files.
+
+Now parcel will watch ./public/js/index.js file and if sth changes in there OR IN ONE OF THE DEPENDENCIES of that file, it will then bundle all of the files
+together again into bundle.js .
+
+Now only include the <script> for bundle.js in base.pug .
+
+The index.js file is for get data from the user interface(website) and then delegate the actions into other modules.
+
+We need to also install a polyfill which will make some of the newer JS features work in older browsers as well. So: npm i @babel/polyfill
+and then import it in index.js .
+
+Now for importing mapbox, we need to first create a function. So create and export displayMap function.
+
+There's a problem with using the mapbox library together with parcel(which means we have installed the mapbox with npm and not a cdn link).
+So we can not use mapbox npm library together with parcel.*/
+/* 185-19. Logging out Users:
+Let's look at a secure way of logging out users.
+Til now, when we wanted to delete a user(logout?), we would simply delete the cookie from our browser by clicking the button on left side of
+url and going to cookie and remove it. However, we created that cookie as an http-only cookie and that means that we cannot manipulate this
+cookie in any way in our browser. So we cannot change it and we can also not delete it.
+
+So if we want to keep using this super secure way of storing cookies, then how are he gonna be able to log out users on our website? Because usually with JWT
+authentication, we just delete the cookie or the token from local storage. But well, that's not possible when using it this way.
+For this, we're gonna create a very simple logout route that will simply send back a new cookie with the exact same name but without the token and so that
+will then override the current cookie that we have in the browser with the one that has the same name but no token and so when that cookie is then sent along with
+the next request, then we will not be able to identify the user as being logged in and so this will effectively log out the user and also we're gonna
+give this cookie a very short expiration time and so this will effectively be a little bit like deleting the cookie but with a very clever workaround like this.
+
+So again when we're doing token based authentication, we usually never need an endpoint like this, but when we want to send a super secure cookie like we do,
+well, then we need to do it like this.
+So create a function named logout.
+
+So the secret is to give this new cookie the exact same name of the old cookie. When we're logging in the user, we send the token, but when we're logging him out,
+we will send some dummy text and then we can set a very short expiration date like 10 seconds from now.
+
+Also we're gonna set this new cookie to http only, but we do not need to set it as secure, because in this case, there is no sensitive data that anyone can get a hold of,
+so no secure: true in this case.
+
+By reloading the page after getting the successful logout response, will then send the cookie(the one that we received which has no token in it) that we just
+got from /logout to the server and then we're no longer logged in and therefore our user menu will disappear.
+
+By passing true to window.location.reload(); it will force a reload from the server and not from browser cache.
+
+The jwt.verify() function would fail in isLoggedIn middleware, when we logout, because that json web token that the user receives after logging out,
+would be a dummy text and not a valid jwt, so it's considered malformed(the jwt was not in a format that the algorithm of verify() expected) when we use jwt.verify()
+after we send a request after the logout. So we didn't use the catchAsync() function in isLoggedIn, but instead, it then went straight to the local catch block which
+will send the req to the next middleware in middleware stack.
+
+That was all we have to do in order to logout a user from our website.
+
+186-20. Rendering Error Pages:
+Operation error: An error that we know, that we created ourselves.
+
+By writing:
+block content
+  <content>
+we're injecting the <content> into the content block in base template.
+
+You could have one completely separate error handling middleware just for the API and one for the rendered website.
+
+
+187-21. Building the User Account Page:
 */

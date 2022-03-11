@@ -213,7 +213,44 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   createdAndSendToken(user, 200, res);
 });
 
+/* we don't want this middleware to cause any errors with global error handling middleware, so we don't use catchAsync() and instead we catch errors LOCALLY, not
+by the global error handler middleware.*/
+// Only for rendered pages, there will be no errors.
+exports.isLoggedIn = async (req, res, next) => {
+  if (req.cookies.jwt) {
+    try {
+      // 1) verify the token:
+      const decoded = await promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
 
+      // 2) Check if user still exists
+      const currentUser = await User.findById(decoded.id); // this is why we put id of user in payload, because now we can use it here
 
+      if (!currentUser) {
+        return next();
+      }
 
+      // 3) Check if user changed password after the jwt(token) was issued
+      if (currentUser.changedPasswordAfter(decoded.iat)) {
+        return next();
+      }
+
+      // There is a logged in user
+      res.locals.user = currentUser;
+      return next();
+    } catch (err) {
+      return next();
+    }
+  }
+
+  next();
+};
+
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true
+  });
+
+  res.status(200).json({status: 'success'});
+};
 

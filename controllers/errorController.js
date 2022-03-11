@@ -2,34 +2,64 @@
 
 const AppError = require('./../utils/appError');
 
-const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
-    status: err.status,
-    message: err.message,
-    stack: err.stack,
-    error: err
-  });
-
-};
-
-const sendErrorProd = (err, res) => {
-  /* Operational errors that we trust(so we CAN send message to the client, it won't harm us to expose the cause of error to them): */
-  if (err.isOperational) {
-    res.status(err.statusCode).json({
+const sendErrorDev = (err, req, res) => {
+  // A) API
+  if (req.originalUrl.startsWith('/api')) {
+    return res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
+      stack: err.stack,
+      error: err
     });
   }
 
-  /* Programming or unknown errors and we don't want to leak details of error to the client: */
-  else {
+
+  // B) RENDERED WEBSITE
+  console.error('ERROR 🧨', err);
+  // we want to RENDER an error page
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong!',
+    msg: err.message
+  });
+};
+
+const sendErrorProd = (err, req, res) => {
+  // A) API
+  if (req.originalUrl.startsWith('/api')) {
+    /* Operational errors that we trust(so we CAN send message to the client, it won't harm us to expose the cause of error to them): */
+    if (err.isOperational) {
+      return res.status(err.statusCode).json({
+        status: err.status,
+        message: err.message
+      });
+    }
+
+    /* Programming or unknown errors and we don't want to leak details of error to the client: */
+    // 1) Log error
     console.error('ERROR 🧨', err);
-    res.status(500).json({
+
+    // 2) Send generic message
+    return res.status(500).json({
       status: 'error',
       message: 'Something went wrong!'
     });
-
   }
+
+  // B) RENDERED WEBSITE
+  if (err.isOperational) {
+    return res.status(err.statusCode).render('error', {
+      title: 'Something went wrong!',
+      msg: err.message
+    });
+  }
+
+  console.error('ERROR 🧨', err);
+
+  // if it is a programming or unknown error for rendered website:
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong!',
+    msg: 'Please try again later.'
+  });
 };
 
 const handleCastErrorDB = (err) => {
@@ -68,7 +98,7 @@ module.exports = (err, req, res, next) => {
   err.status = err.status || 'error';
 
   if (process.env.NODE_ENV === 'development') {
-    sendErrorDev(err, res);
+    sendErrorDev(err, req, res);
   } else if (process.env.NODE_ENV.trim() === 'production') {
 
     /* If the condition of this else if() statement would be false the request with weird id or other mongoose non operational errors,
@@ -79,8 +109,8 @@ module.exports = (err, req, res, next) => {
     be undefined. We're currently doing a shallow copy of err object, but even if you do a deep copy of err, name property won't
     copied into error object. I don't know why error object doesn't get the name property from err object.
     FIXME: console.log(error.name); returns undefined. error.name must be used in comparison*/
-
     let error = { ...err };
+    error.message = err.message;
 
     if (err.name === 'CastError') {
       /* We're reassigning the error variable. So we must declare it with let in the beginning. */
@@ -99,7 +129,7 @@ module.exports = (err, req, res, next) => {
 
     if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
 
-    sendErrorProd(error, res);
+    sendErrorProd(error, req, res);
   }
 
 };

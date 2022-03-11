@@ -94,6 +94,9 @@ app.use((req, res, next) => {
 /* Let's add a middleware that add current time property to req object(a middleware that manipulate the req object in each request.)  */
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
+
+  res.setHeader('Content-Security-Policy', 'connect-src ws://localhost:*');
+
   // console.log('cookies: ', req.cookies);
   next();
 });
