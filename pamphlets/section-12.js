@@ -233,6 +233,50 @@ we're injecting the <content> into the content block in base template.
 
 You could have one completely separate error handling middleware just for the API and one for the rendered website.
 
-
 187-21. Building the User Account Page:
+Let's put isLoggedIn middleware only for not protected routes in viewRoutes, because we get current user query, in BOTH of them. So that would be
+duplicate if we put isLoggedIn and protect middlewares both for a route.
+
+188-22. Updating User Data:
+We want to allow the user to update both the name and the email address.
+There are two ways in which we can do this:
+1) submit a POST request to our API just like we did with the login form.
+2) another way which is more traditional and normal way and in this way, we specify the POST method right on the form, along with the url where the
+POST request should be sent to. So basically using this method, we don't need JS for doing the request, it automatically happens with the html form which will
+then post the data to the url endpoint in our backend that we specified. I don't really like this solution, because it forces a page reload and
+it also requires us to create yet another route and route handler in our backend and finally it also makes it a bit difficult to handle errors.
+
+But it might makes more sense in the application that you're building. For example, your app might not even need an API and so in that case,
+when you're only building a rendered website, then of course id doesn't make sense to submit forms using an api call.
+
+There are different ways in which the data is actually sent, but the default one is called `url encoded` and it's gonna encode all the data that we're submitting
+in the url a bit like a query string.
+
+The first thing to do for doing the request by using approach 2, is to set action and method attributes on <form>
+Then we need to specify the name properties on the fields that we want to send.
+
+With the second way of sending requests, we need to implement yet another route for our api to handle it.
+
+We need to add another middleware in order to parse data coming from a form. Let's do that in app.js and add this new middleware close to where you're using the
+bodyParser(actually express.json()).
+
+Important: Security tip: Only update data that you actually care. For example in updateUserData(), we only care about name and email, so we only use them and we're not passing
+ the WHOLE req.body to the findByIdAndUpdate() update object, because some hacker could add some additional fields to the html and then submit
+ data like passwords and ... and we don't want to store that malicious data into our DB.
+ Also, passwords are once more handled separately, because remember that we can never never update passwords using findByIdAndUpdate() , because that's not
+ going to run the safe middleware which will take care of encrypting our passwords and so that's why we have a separate route for that in our API and also we have
+ separate form for that, in our user interface. So in most web apps, when you want to update your password, you usually have a separate form ONLY for that.
+
+After submitting the data on our website, we want to come back to the same page that we were before bu of course with the updated data. So we need to
+render the /account page again. But now, we actually also need to pass in the UPDATED user, because otherwise, the user that the template is going to use,
+is the one that's coming from the protect middleware and that one is OLD, so we need to pass in the UPDATED user ourselves.
+
+With the second approach, if we submit some invalid data that is invalid in the view of our backend logic, the backend will send some error and then
+we're gonna go to a completely new page which is the ur; that we specified in action attr of <form> and this is a terrible UX.
+So in our case, if we submit an email like: asdasd@qweqweqwe , this is a valid email in the eyes of google chrome but not the mongoose, so we will go to the
+/submit-user-data on our site. This is not a good UX and this is why this approach is not good for handling errors. So we can use the api approach.
+
+189-23. Updating User Data with Our API:
+
+190-24. Updating User Password with Our API:
 */

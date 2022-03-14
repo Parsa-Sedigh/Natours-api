@@ -15,12 +15,15 @@ const createdAndSendToken = (user, statusCode, res) => {
 
   const cookieOptions = {
     expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
-    httpOnly: true
+    httpOnly: true,
+    sameSite: 'none',
+    secure: true
   };
 
   if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
 
   res.cookie('jwt', token, cookieOptions);
+  console.log('createdAndSendToken: ', res)
 
   // Remove the password from output:
   user.password = undefined;
@@ -112,6 +115,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Grant access to protected route
   req.user = currentUser;
+  res.locals.user = currentUser;
   next();
 });
 
@@ -217,6 +221,8 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 by the global error handler middleware.*/
 // Only for rendered pages, there will be no errors.
 exports.isLoggedIn = async (req, res, next) => {
+  console.log('curr: ', req.cookies.jwt)
+
   if (req.cookies.jwt) {
     try {
       // 1) verify the token:
@@ -233,7 +239,6 @@ exports.isLoggedIn = async (req, res, next) => {
       if (currentUser.changedPasswordAfter(decoded.iat)) {
         return next();
       }
-
       // There is a logged in user
       res.locals.user = currentUser;
       return next();

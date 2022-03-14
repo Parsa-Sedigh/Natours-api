@@ -18,6 +18,7 @@ const viewRouter = require('./routes/viewRoutes');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
+const cors = require('cors');
 
 const app = express();
 
@@ -27,6 +28,11 @@ app.set('views', path.join(__dirname, 'views'));
 //1) GLOBAL Middlewares
 // Serving static files:
 app.use(express.static(path.join(`${__dirname}/public`)));
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 // Set security HTTP headers
 app.use(helmet());
@@ -49,6 +55,7 @@ app.use('/api', limiter);
 We use express.json() middleware in order to parse the data from body on req object. But in past, we have to use bodyParser.json()
 But in the last version, we don't have to use bodyParser.json() and instead we can use express.json()   */
 app.use(express.json({limit: '10kb'}));
+app.use(express.urlencoded({extended: true, limit: '10kb'}));
 app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
@@ -95,7 +102,10 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
 
-  res.setHeader('Content-Security-Policy', 'connect-src ws://localhost:*');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src *; font-src *; img-src 'self'; script-src *; style-src * 'unsafe-inline'; frame-src 'self'"
+  );
 
   // console.log('cookies: ', req.cookies);
   next();
