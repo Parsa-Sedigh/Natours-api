@@ -7,6 +7,8 @@ We could use those names directly...*/
 
 const authController = require('../controllers/authController');
 
+
+
 /* It's better to call this const variable just router: const userRouter = express.Router(); and then when we are importing or
 requiring these routers, we can import them as their unique names in app.js file.But in their routes files, we call them router
 instead of their unique name, like userRouter or .... */
@@ -22,8 +24,8 @@ router.patch('/resetPassword/:token', authController.resetPassword);
 // Protect all routes after this middleware:
 router.use(authController.protect);
 
-router.patch('/updateMyPassword',authController.updatePassword);
-router.patch('/updateMe', userController.updateMe);
+router.patch('/updateMyPassword', authController.updatePassword);
+router.patch('/updateMe', userController.uploadUserPhoto, userController.resizeUserPhoto, userController.updateMe);
 router.delete('/deleteMe', userController.deleteMe);
 router.get('/me', userController.getMe, userController.getUser);
 

@@ -39,17 +39,15 @@ mongoose.connect(DB, {
 
 const port = process.env.PORT || 3000;
 
+
+
+// const server = https.createServer({
+//   key: privateKey,
+//   cert: certificate
+// }, app);
+
 /* The second arg will be called as soon as the server starts listening. */
-// const server = app.listen(port, () => {
-//   console.log(`App running on port ${port} ...`);
-// });
-
-const server = https.createServer({
-  key: privateKey,
-  cert: certificate
-}, app);
-
-server.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`App running on port ${port} ...`);
 });
 
