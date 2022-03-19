@@ -226,9 +226,33 @@ query string doesn't show up in our browser's url bar when we reach the homepage
 createBookingCheckout won't get called again and then our normal homepage will get rendered.
 
 208-18. Rendering a User's Booked Tours:
+Create /my-tours route in api.
 
 209-19. Finishing the Bookings API:
 
 210-20. Final Considerations:
-*/
+Some topics that we could've added to the API and to the website:
+Challenges api:
+- implement restriction that users can only review a tour that they have actually booked
+- implement nested booking routes: /tours/:id/bookings (getting all the bookings for a certain tour) and /users/:id/bookings (getting all the bookings
+  for a certain user)
+- improve tour dates: add a `participants` and a `soldOut` field to each date. A date then becomes like an instance of the tour. Then, when a user books,
+  they need to select one of the available dates. A new booking will increase the number of participants in the date, until it is
+  booked out(participants > maxGroupSize). So, when a user wants to book, you need to check if tour on the selected date is still available on that selected date
+- implement advanced authentication features: confirm user email by sending them an email with a link that they need to click and only after the click, the user is
+  then really registered in the app and can do stuff like purchasing tours, keep users logged in with refresh tokens, two-factor authentication(which means
+  when a user logs in, they then receive sth like a text message on their phone with a code that they need to put into the application in order to be
+  authenticated after that second step), etc.
+
+Challenges(website):
+- implement a sign up form, similar to the login form
+- on the tour detail page, if a user has taken a tour, allow them add a review directly on the website, implement a form for this. So you would have to check
+  if the currently logged-in user has actually booked the current tour and also if the time of the tour has already passed, and if so, then you can add a form
+  to the page where the user can add a new review using our review api.
+- hide the entire booking section on the same tour detail page if current user has already booked the tour(also prevent duplicate bookings on the model). So this
+  should prevent the same user from booking the same tour, twice.
+- implement like tour functionality, with favourite tour page.
+- on the user account page, implement the "My reviews" page, where all reviews are displayed and a user can edit them.(If you know react, this would be an amazing way
+  to use the natours api.)
+- for admins, implement all the "manage" pages, where they can CRUD tours, users, reviews and bookings*/
 

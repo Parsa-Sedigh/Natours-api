@@ -2,6 +2,7 @@ const catchAsync = require('../utils/catchAsync');
 const Tour = require('../models/tourModel');
 const AppError = require('../utils/appError');
 const User = require('../models/userModel');
+const Booking = require('../models/bookingModel');
 
 exports.getOverview = catchAsync(async (req, res, next) => {
   // 1) Get tour data from collection
@@ -63,5 +64,28 @@ exports.updateUserData = catchAsync(async (req, res, next) => {
     /* need to pass in the user object to template OURSELVES, because the protect middleware's user object is old user not the updated one that we update
      here, so we need to pass it to template here and not let the protect middleware pass the old user object.*/
     user: updatedUser
+  });
+});
+
+// Find all the tours that the user has booked
+exports.getMyTours = catchAsync(async (req, res, next) => {
+  /* Find all the bookings for the currently logged-in user which will then give us a bunch of tour ids and then we have to
+  find the tours with those ids.
+  Instead, we could also do a virtual populate on the tours. But in this case, let's do it manually.
+  One of the reasons that we want to do this manually instead of using a virtual populate is to use the $in operator. But you can do this with virtual populate too,
+  just for fun!*/
+  // 1) Find all bookings
+  const bookings = await Booking.find({user: req.user.id});
+
+  // 2) Find tours with the returned ids
+  const tourIds = bookings.map(el => el.tour);
+
+  // Here, we can not use findById(), because we want to use an operator which is $in .
+  const tours = await Tour.find({_id: {$in: tourIds}});
+
+  // we're gonna re-using the overview template:
+  res.status(200).render('overview', {
+    title: 'My Tours',
+    tours
   });
 });
