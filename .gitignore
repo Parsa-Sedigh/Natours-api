@@ -1,3 +1,9 @@
-node_modules
+node_modules/
+*.env
+.cache/
+public/js/bundle.js
+public/js/bundle.js.map
 .idea/
-./package-lock.json
+package-lock.json
+localhost-key.pem
+localhost.pem

@@ -193,11 +193,12 @@ tourSchema.pre(/^find/, function (next) {
   next();
 });
 
-tourSchema.post(/^find/, function (docs, next) {
-  /* In this middleware, the query has been executed. */
-  console.log(`Query took ${Date.now() - this.start} milliseconds.`);
-  next();
-});
+// this middleware is only for testing purposes:
+// tourSchema.post(/^find/, function (docs, next) {
+//   /* In this middleware, the query has been executed. */
+//   console.log(`Query took ${Date.now() - this.start} milliseconds.`);
+//   next();
+// });
 
 // Aggregation middleware
 // tourSchema.pre('aggregate', function (next) {

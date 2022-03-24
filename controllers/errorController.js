@@ -74,7 +74,7 @@ const handleDuplicateFieldsDB = (err) => {
   /* The value of field which is duplicated: */
   const value = err.keyValue.name;
   const duplicatedField = Object.keys(err).find(key => err.keyValue[key] === value);
-  console.log(duplicatedField);
+  // console.log(duplicatedField);
   const message = `Duplicate value ${value} in ${duplicatedField} field. Pleas use another value for that field.`;
   return new AppError(message, 400);
 };
