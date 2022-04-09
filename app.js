@@ -11,6 +11,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
+const cors = require('cors');
 
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
@@ -20,21 +21,26 @@ const bookingRouter = require('./routes/bookingRoutes');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
-const cors = require('cors');
 
 const app = express();
+
+app.enable('trust proxy');
 
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
 
+// implement CORS:
+// this set Access-Control-Allow-Origin to *
+// app.use(cors({
+//   origin: true,
+//   credentials: true
+// }));
+app.use(cors());
+app.options('*', cors());
+
 //1) GLOBAL Middlewares
 // Serving static files:
 app.use(express.static(path.join(`${__dirname}/public`)));
-
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
 
 // Set security HTTP headers
 app.use(helmet());

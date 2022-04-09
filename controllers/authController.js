@@ -10,17 +10,18 @@ const signToken = id => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 };
 
-const createdAndSendToken = (user, statusCode, res) => {
+const createdAndSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id);
 
   const cookieOptions = {
     expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
     httpOnly: true,
     sameSite: 'none',
-    secure: true
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https'
   };
 
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  // if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  // if (req.secure || req.headers['x-forwarded-proto'] === 'https') cookieOptions.secure = true;
 
   res.cookie('jwt', token, cookieOptions);
   // console.log('createdAndSendToken: ', res)
@@ -61,7 +62,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   const url = `${req.protocol}://${req.get('host')}/me`;
   await new Email(newUser, url).sendWelcome();
 
-  createdAndSendToken(newUser, 201, res);
+  createdAndSendToken(newUser, 201,req , res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -86,7 +87,7 @@ exports.login = catchAsync(async (req, res, next) => {
   //   status: 'success',
   //   token
   // });
-  createdAndSendToken(user, 200, res);
+  createdAndSendToken(user, 200, req, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -200,7 +201,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   //   status: 'success',
   //   token
   // });
-  createdAndSendToken(user, 200, res);
+  createdAndSendToken(user, 200, req, res);
 });
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
@@ -219,7 +220,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   // user.findByIdAndUpdate() will NOT work as intended!
 
   // 4) Log user in, send JWT
-  createdAndSendToken(user, 200, res);
+  createdAndSendToken(user, 200, req, res);
 });
 
 /* we don't want this middleware to cause any errors with global error handling middleware, so we don't use catchAsync() and instead we catch errors LOCALLY, not
