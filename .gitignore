@@ -7,3 +7,4 @@ public/js/bundle.js.map
 package-lock.json
 localhost-key.pem
 localhost.pem
+public/img/*
